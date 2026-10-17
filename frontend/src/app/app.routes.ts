@@ -40,6 +40,54 @@ export const routes: Routes = [
     loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
   },
   {
+    path: 'projects',
+    title: 'Projects · Task Management',
+    canActivate: [permissionGuard('projects.view', 'Own')],
+    loadComponent: () => import('./features/projects/project-list').then((m) => m.ProjectList),
+  },
+  {
+    path: 'projects/new',
+    title: 'New project · Task Management',
+    canActivate: [permissionGuard('projects.create')],
+    loadComponent: () => import('./features/projects/project-form').then((m) => m.ProjectForm),
+  },
+  {
+    path: 'projects/:id',
+    title: 'Project · Task Management',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/projects/project-detail').then((m) => m.ProjectDetail),
+  },
+  {
+    path: 'projects/:id/edit',
+    title: 'Edit project · Task Management',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/projects/project-form').then((m) => m.ProjectForm),
+  },
+  {
+    path: 'projects/:projectId/tasks/new',
+    title: 'New task · Task Management',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/tasks/task-form').then((m) => m.TaskForm),
+  },
+  {
+    path: 'tasks',
+    title: 'Tasks · Task Management',
+    canActivate: [permissionGuard('tasks.view', 'Own')],
+    loadComponent: () => import('./features/tasks/task-list').then((m) => m.TaskList),
+  },
+  {
+    path: 'tasks/:id',
+    title: 'Task · Task Management',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/tasks/task-detail').then((m) => m.TaskDetail),
+  },
+  {
+    path: 'tasks/:id/edit',
+    title: 'Edit task · Task Management',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/tasks/task-form').then((m) => m.TaskForm),
+  },
+  {
     path: 'admin',
     children: [
       {

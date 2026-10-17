@@ -98,6 +98,8 @@ api.MapAuthEndpoints();
 api.MapMeEndpoints();
 api.MapMemberEndpoints();
 api.MapAdministrationEndpoints();
+api.MapProjectEndpoints();
+api.MapTaskEndpoints();
 
 await app.RunAsync();
 return 0;

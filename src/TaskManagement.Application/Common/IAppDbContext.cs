@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
+using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Settings;
+using TaskManagement.Domain.Tasks;
 
 namespace TaskManagement.Application.Common;
 
@@ -27,7 +30,29 @@ public interface IAppDbContext
 
     DbSet<EmailDelivery> EmailDeliveries { get; }
 
+    DbSet<Project> Projects { get; }
+
+    DbSet<ProjectMember> ProjectMembers { get; }
+
+    DbSet<TaskItem> Tasks { get; }
+
+    DbSet<TaskStatusChange> TaskStatusHistory { get; }
+
+    DbSet<TaskAssignment> TaskAssignments { get; }
+
+    DbSet<TaskComment> TaskComments { get; }
+
+    DbSet<TaskCommentEdit> TaskCommentEdits { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the project's next task number. The counter row stays locked until the surrounding transaction ends,
+    /// so concurrent creates in one project are serialized and numbers have no gaps.
+    /// </summary>
+    Task<int> AllocateTaskNumberAsync(Guid projectId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Makes the next save fail with a concurrency conflict if the row's version is no longer <paramref name="expectedVersion"/>

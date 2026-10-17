@@ -1,6 +1,7 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { toParams } from '../../core/api/http-params';
 import { PagedResult } from '../../core/api/paged';
 import { PermissionGrant } from '../../core/auth/auth.models';
 import { AuditEntry, AuditQuery, AuthSettings, Member, MemberQuery, Permission, Role, SaveMember, Settings } from './admin.models';
@@ -73,14 +74,4 @@ export class AdminApi {
   auditLogs(query: AuditQuery): Observable<PagedResult<AuditEntry>> {
     return this.http.get<PagedResult<AuditEntry>>('/api/v1/audit-logs', { params: toParams(query) });
   }
-}
-
-function toParams(query: object): HttpParams {
-  let params = new HttpParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null && value !== '') {
-      params = params.set(key, String(value));
-    }
-  }
-  return params;
 }

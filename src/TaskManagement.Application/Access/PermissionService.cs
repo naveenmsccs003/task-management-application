@@ -27,6 +27,19 @@ public sealed class PermissionService(IAppDbContext db, IMemoryCache cache)
             return new EffectivePermissions(grants);
         }) ?? EffectivePermissions.None;
 
+    /// <summary>The grants of one role, used to resolve project-role permissions. Cached like member permissions.</summary>
+    public async Task<IReadOnlyDictionary<string, PermissionScope>> GetRoleGrantsAsync(Guid roleId, CancellationToken cancellationToken) =>
+        await cache.GetOrCreateAsync($"role-grants:{Interlocked.Read(ref CacheGeneration)}:{roleId}", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            IReadOnlyDictionary<string, PermissionScope> grants = await db.Roles
+                .AsNoTracking()
+                .Where(r => r.Id == roleId)
+                .SelectMany(r => r.Permissions)
+                .ToDictionaryAsync(p => p.PermissionCode, p => p.Scope, StringComparer.Ordinal, cancellationToken);
+            return grants;
+        }) ?? new Dictionary<string, PermissionScope>();
+
     /// <summary>Call after any role-permission or role-assignment change.</summary>
     public static void InvalidateAll() => Interlocked.Increment(ref CacheGeneration);
 }

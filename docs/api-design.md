@@ -100,6 +100,10 @@ No registration endpoint exists (FR-AUTH-01).
 | POST | `/projects/{id}/members` | `projects.members.manage` |
 | PATCH/DELETE | `/projects/{id}/members/{userId}` | `projects.members.manage` |
 | GET | `/projects/{id}/my-permissions` | signed in (for UI) |
+| GET | `/projects/{id}/member-candidates?search=` | `projects.members.manage` — active accounts not yet in the project (id, name, email only) |
+| GET | `/projects/roles` | signed in — roles that can be given in a project (all except Admin) |
+
+**Implemented in Phase 5.** Also `POST /projects/{id}/hold` (status On hold). Status actions take `{ confirmOpenTasks }`: completing or archiving a project with open tasks returns 409 `project.has_open_tasks` until it is `true` (FR-PROJ-04). Project endpoints require a signed-in member; `projects.view`, `projects.update` and `projects.members.manage` are checked per project because they depend on the caller's project role (a Global grant on the global role applies everywhere). Creating a project needs a Global `projects.create` grant; a creator without Global `projects.view` (e.g. a PM) becomes the project's PM member.
 
 ### 4.4 Tasks
 
@@ -114,6 +118,8 @@ No registration endpoint exists (FR-AUTH-01).
 | GET | `/tasks/{id}/history` | `tasks.view` — status, assignment, revision timeline |
 | GET/POST | `/tasks/{id}/comments` | `tasks.view` / `tasks.comment` |
 | PATCH/DELETE | `/tasks/{id}/comments/{commentId}` | author within 15 min / author or TL/PM |
+
+**Implemented in Phase 5**, plus `POST /tasks` with `projectId` in the body (a missing project answers 400, AC-TASK-1). `GET /tasks` also takes `sort` (allow-listed: `key`, `title`, `dueDate`, `priority`, `createdAt`, `updatedAt`; default `dueDate,key`) and the usual paging. `q` matches a task key exactly (`TMA-42`) or searches titles. "TL/PM" for deleting comments means `tasks.update` in the project.
 
 ### 4.5 Workflow actions
 
@@ -135,6 +141,8 @@ All `POST /tasks/{id}/…`, return the updated `TaskDto`.
 | `/close` | T13 | `{ comment? }` | `tasks.close` |
 | `/reopen` | T14 | `{ reason }` | `tasks.reopen` |
 | `/cancel` | T15 | `{ reason }` | `tasks.cancel` |
+
+**Implemented in Phase 5:** `/assign` (body may also carry `dueDate` when the task has none yet, WQ1) and `/cancel`. The other actions arrive with their phases; `allowedActions` lists only implemented actions (`update`, `assign`, `cancel`, `delete`, `comment` so far).
 
 GET `/tasks/{id}/algorithm` lists all submissions (`algorithms.view`).
 

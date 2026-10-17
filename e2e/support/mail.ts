@@ -9,7 +9,7 @@ export async function latestLinkFor(
   mailDirectory: string,
   email: string,
   kind: 'set-password' | 'reset-password',
-  timeoutMs = 20_000,
+  timeoutMs = 45_000,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -26,7 +26,9 @@ function findLink(mailDirectory: string, email: string, kind: string): string | 
     .sort()
     .reverse();
   for (const file of files) {
-    const message = decodeQuotedPrintable(readFileSync(path.join(mailDirectory, file), 'utf8'));
+    const raw = readFileSync(path.join(mailDirectory, file), 'utf8');
+    // Decode only quoted-printable messages: in a plain message "?token=9B…" would otherwise be mangled into a byte.
+    const message = /content-transfer-encoding:\s*quoted-printable/i.test(raw) ? decodeQuotedPrintable(raw) : raw;
     if (!message.toLowerCase().includes(email.toLowerCase())) continue;
     const match = message.match(new RegExp(`(https?://[^\\s"<>]+/${kind}\\?token=[A-Za-z0-9_%-]+)`));
     if (match) return match[1];

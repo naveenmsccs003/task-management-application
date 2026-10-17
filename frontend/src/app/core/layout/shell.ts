@@ -15,6 +15,12 @@ import { AuthService } from '../auth/auth.service';
       <a class="brand" routerLink="/">Task Management</a>
       @if (auth.me(); as me) {
         <nav aria-label="Main">
+          @if (auth.hasPermission('projects.view', 'Own')) {
+            <a mat-button routerLink="/projects" routerLinkActive="active">Projects</a>
+          }
+          @if (auth.hasPermission('tasks.view', 'Own')) {
+            <a mat-button routerLink="/tasks" routerLinkActive="active">Tasks</a>
+          }
           @if (auth.hasPermission('members.view')) {
             <a mat-button routerLink="/admin/members" routerLinkActive="active">Members</a>
           }

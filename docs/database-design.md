@@ -124,6 +124,8 @@ Index: unique (`token_hash`); (`user_id`) where `used_at IS NULL AND revoked_at 
 **`project_members`**: id, project_id, user_id, project_role_id (FK roles), added_at, added_by, removed_at, removed_by.
 Unique (project_id, user_id) where `removed_at IS NULL`. Membership history is kept by never deleting rows.
 
+**`task_counters`** (Phase 5): project_id (PK, FK), last_number. *Implemented instead of `projects.next_task_number`*: incrementing a column on `projects` would change the project row's `xmin` on every task create and give false "changed by someone else" conflicts on project edits. A task create runs `INSERT … ON CONFLICT DO UPDATE … RETURNING` inside its transaction, so the row lock serializes creates in one project and numbers have no gaps.
+
 ### 3.5 `tasks`
 
 **`tasks`**
@@ -154,7 +156,9 @@ Unique (project_id, user_id) where `removed_at IS NULL`. Membership history is k
 
 Indexes: (project_id, status); (assignee_id, status); (due_date) where status not in (`Approved`,`Closed`,`Cancelled`); GIN trigram on title for search (`pg_trgm`).
 
-**`task_status_history`** (append-only): id, task_id, revision, from_status, to_status, action, actor_id, comment, occurred_at.
+*Phase 5 implementation notes:* `key` (`TMA-42`) is stored (unique) because project keys never change; `labels` is a `text[]` (max 10, 30 characters each); `first_started_at` (set by Start, Phase 6) locks the "algorithm required" flag; `cancelled_at` / `cancelled_by` sit next to `cancel_reason`; `start_date` ≤ `due_date` is a CHECK constraint. `is_overdue` is not stored yet — Overdue is computed at query time (due date before today in UTC, task still open) until the daily job arrives in Phase 8. `algorithm_approved_submission_id`, `approved_revision`, the notification-revision columns, `gitlab_issue_closed`, `original_due_date` handling for extensions and `closed_at/closed_by` arrive with their phases. The trigram index is on `lower(title)` to match the case-insensitive search.
+
+**`task_status_history`** (append-only): id, task_id, revision, from_status, to_status, action, actor_id, comment, occurred_at. The only deletion is of a never-assigned draft's single creation row when that draft is deleted (FR-TASK-09).
 
 **`task_assignments`** (append-only): id, task_id, from_user_id (null on first), to_user_id, kind (`Initial` / `Reassignment`), reason, assigned_by, approval_request_id (null for Initial), occurred_at.
 

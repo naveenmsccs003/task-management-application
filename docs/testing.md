@@ -36,10 +36,10 @@ Last updated: 2026-10-17
 **End-to-end journeys (Playwright).**
 
 1. Admin creates member → member sets password via invite link (email read from the API's pickup folder) → signs in. *(Implemented in Phase 4: `e2e/tests/admin-invites-member.spec.ts`.)*
-2. PM creates project and task → TL assigns → developer submits algorithm → TL rejects → developer resubmits → TL approves.
+2. PM creates project and task → TL assigns → developer submits algorithm → TL rejects → developer resubmits → TL approves. *(Phase 5: up to assignment, plus the assignee commenting — `e2e/tests/project-task-journey.spec.ts`. Algorithm steps follow in Phase 6.)*
 3. Developer starts, pauses, resumes, completes checklist, submits → TL requests revision → developer resubmits → TL approves → PM closes.
 4. Developer requests extension → TL approves → due date updated.
-5. Developer cannot open another developer's task by URL (sees "not found"). *(Phase 4 covers the member → admin-page part: "No access" in the UI and 403 from the API.)*
+5. Developer cannot open another developer's task by URL (sees "not found"). *(Phase 4 covers the member → admin-page part: "No access" in the UI and 403 from the API; Phase 5 adds the task part in `project-task-journey.spec.ts`.)*
 
 ## 4. Test data
 
@@ -91,3 +91,4 @@ End-to-end tests run on the main branch (CI job `e2e`, after the backend and fro
 | 2 | None (documentation only) | — |
 | 3 | Backend: 34 tests (Domain 10, Architecture 14, Integration 10) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`. Frontend: 11 Vitest tests. Lint, format, build, migration check, vulnerability scans. | All passed locally (2026-10-17). First GitHub Actions run (incl. Testcontainers) passed after push. |
 | 4 | Backend: 141 tests (Domain 33, Application 26, Architecture 16, Integration 66) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`, run twice. Frontend: 28 Vitest tests, ESLint. End-to-end: 2 Playwright tests (journey 1 + generic sign-in error) in Chromium against API + Angular dev server + PostgreSQL. `dotnet format`, migration check, vulnerability scans. | All passed locally (2026-10-17). The new CI `e2e` job runs for the first time after push. |
+| 5 | Backend: 244 tests (Domain 103, Application 26, Architecture 16, Integration 99) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`, including AC-TASK-1..4, AC-ROLE-1 (project role), FR-PROJ-03..05, concurrent task numbering, comment edit window and history. Frontend: 37 Vitest tests, ESLint, production build. End-to-end: 3 Playwright tests (Phase 4's two plus the project/task journey) in Chromium, passing on a fresh database and fresh servers. `dotnet format`, Release build with warnings as errors, pending-model-change check. | All passed locally (2026-10-17). |

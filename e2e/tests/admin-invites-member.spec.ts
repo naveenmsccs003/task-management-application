@@ -35,8 +35,10 @@ test('admin invites a member, who sets a password, signs in and cannot reach adm
   // Admin creates a Developer account.
   await page.getByRole('link', { name: 'Members' }).click();
   await page.getByRole('link', { name: 'Add member' }).click();
-  await page.getByLabel('Email').fill(memberEmail);
-  await page.getByLabel('Full name').fill('Dev Eloper');
+  // Wait for the form: the member list's "Search name, email or code" box would also match a loose label.
+  await expect(page.getByRole('heading', { name: 'Add member' })).toBeVisible();
+  await page.getByLabel('Email', { exact: true }).fill(memberEmail);
+  await page.getByLabel('Full name', { exact: true }).fill('Dev Eloper');
   await page.getByRole('button', { name: 'Create and send invite' }).click();
   await expect(page.getByRole('heading', { name: 'Dev Eloper' })).toBeVisible();
   await expect(page.getByText('Invited (password not set yet)')).toBeVisible();

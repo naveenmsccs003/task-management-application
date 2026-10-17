@@ -16,6 +16,18 @@ public static class PermissionCatalog
     public const string RolesManage = "roles.manage";
     public const string SettingsManage = "settings.manage";
     public const string AuditView = "audit.view";
+    public const string ProjectsView = "projects.view";
+    public const string ProjectsCreate = "projects.create";
+    public const string ProjectsUpdate = "projects.update";
+    public const string ProjectsMembersManage = "projects.members.manage";
+    public const string TasksView = "tasks.view";
+    public const string TasksCreate = "tasks.create";
+    public const string TasksUpdate = "tasks.update";
+    public const string TasksAssign = "tasks.assign";
+    public const string TasksCancel = "tasks.cancel";
+    public const string TasksDeleteDraft = "tasks.delete-draft";
+    public const string TasksComment = "tasks.comment";
+    public const string TasksWork = "tasks.work";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
     public static IReadOnlyList<string> AdminProtected { get; } = [RolesManage, MembersCreate];
@@ -56,20 +68,20 @@ public static class PermissionCatalog
         new(SettingsManage, "Settings", "Edit global settings", G, null, null, null, null),
 
         // Projects
-        new("projects.view", "Projects", "View project details", G, P, P, P, P),
-        new("projects.create", "Projects", "Create projects", G, null, G, null, null),
-        new("projects.update", "Projects", "Edit project details and status, archive", G, null, P, null, null),
-        new("projects.members.manage", "Projects", "Add and remove project members and set project roles", G, null, P, null, null),
+        new(ProjectsView, "Projects", "View project details", G, P, P, P, P),
+        new(ProjectsCreate, "Projects", "Create projects", G, null, G, null, null),
+        new(ProjectsUpdate, "Projects", "Edit project details and status, archive", G, null, P, null, null),
+        new(ProjectsMembersManage, "Projects", "Add and remove project members and set project roles", G, null, P, null, null),
 
         // Tasks
-        new("tasks.view", "Tasks", "View tasks", G, P, P, O, P),
-        new("tasks.create", "Tasks", "Create tasks", null, P, P, null, null),
-        new("tasks.update", "Tasks", "Edit task fields", null, P, P, null, null),
-        new("tasks.assign", "Tasks", "Assign tasks and request reassignment", null, P, P, null, null),
-        new("tasks.cancel", "Tasks", "Cancel a task with a reason", null, P, P, null, null),
-        new("tasks.delete-draft", "Tasks", "Delete a draft task without history", null, P, P, null, null),
-        new("tasks.comment", "Tasks", "Add comments", null, P, P, O, null),
-        new("tasks.work", "Tasks", "Start, pause, resume and stop own work", null, O, null, O, null),
+        new(TasksView, "Tasks", "View tasks", G, P, P, O, P),
+        new(TasksCreate, "Tasks", "Create tasks", null, P, P, null, null),
+        new(TasksUpdate, "Tasks", "Edit task fields", null, P, P, null, null),
+        new(TasksAssign, "Tasks", "Assign tasks and request reassignment", null, P, P, null, null),
+        new(TasksCancel, "Tasks", "Cancel a task with a reason", null, P, P, null, null),
+        new(TasksDeleteDraft, "Tasks", "Delete a draft task without history", null, P, P, null, null),
+        new(TasksComment, "Tasks", "Add comments", null, P, P, O, null),
+        new(TasksWork, "Tasks", "Start, pause, resume and stop own work", null, O, null, O, null),
         new("tasks.submit", "Tasks", "Submit own task for review", null, O, null, O, null),
         new("tasks.review", "Tasks", "Approve review or request revision", null, P, null, null, null),
         new("tasks.close", "Tasks", "Close a task after TL approval", null, P, P, null, null),

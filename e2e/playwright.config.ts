@@ -21,6 +21,8 @@ export default defineConfig({
   retries: process.env['CI'] ? 1 : 0,
   reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   timeout: 60_000,
+  // The Angular dev server compiles each lazy-loaded page on its first visit, which can take a few seconds.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: 'http://localhost:4200',
     trace: 'retain-on-failure',
@@ -39,6 +41,11 @@ export default defineConfig({
         ASPNETCORE_ENVIRONMENT: 'Development',
         ConnectionStrings__Default: database,
         Email__PickupDirectory: mailDirectory,
+        // Journeys sign in and activate several accounts from one IP; keep the per-IP limits out of the way.
+        Auth__SignInPermitsPerMinute: '1000',
+        Auth__PasswordPermitsPerQuarterHour: '1000',
+        // Deliver queued emails quickly so tests waiting for invite links stay fast.
+        Email__PollInterval: '00:00:01',
       },
     },
     {

@@ -1,10 +1,10 @@
 # Known Issues, Risks and Open Decisions
 
-Last updated: 2026-10-17 (Phase 4)
+Last updated: 2026-10-17 (Phase 5)
 
 ## Open decisions
 
-None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design and Phase 3 foundation approved 2026-10-17. Phase 4 is awaiting approval.
+None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation and Phase 4 (authentication, members, roles, settings, audit) approved 2026-10-17. Phase 5 is awaiting approval.
 
 ## Environment notes (development machine)
 
@@ -16,7 +16,7 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | Playwright | Chromium for Playwright is in `~/.cache/ms-playwright` | Needed only for `e2e/`. |
 | GitHub access | Remote uses SSH; key works | `gh` CLI token is invalid — only needed for PR/CI commands (`gh auth login`). |
 
-## Known limitations (Phase 4)
+## Known limitations
 
 | # | Limitation | Plan |
 |---|---|---|
@@ -31,6 +31,14 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L9 | Only the per-IP limits on sign-in and password endpoints exist; the general 300 requests/minute per-user limit ([api-design.md](api-design.md) §6) is not configured yet. | Before production. |
 | L10 | Chrome lists some time zones under old names (e.g. `Asia/Calcutta`) that the server's time-zone database may not know. The Angular app maps the known old names to current ones (`Asia/Kolkata`); an unmapped old name is rejected by the server with a clear message. | None needed unless users report one. |
 | L11 | Emails are sent by a background worker every 5 seconds, so an invite or reset email arrives a few seconds after the request. | By design (outbox, decision D7). |
+| L12 | Assignment does not notify the assignee and TL yet (FR-ASG-06). | Notifications phase (Phase 7). |
+| L13 | Task and project descriptions are shown as plain text (line breaks kept); Markdown is stored but not rendered yet. Plain text is safe; rendering needs a sanitizing Markdown renderer. | Before release (with attachments or hardening). |
+| L14 | The Overdue flag is computed on read, comparing the due date with today's date in UTC, not the member's time zone, and no overdue/due-soon notifications are sent. | Phase 8 (daily job, `is_overdue`, notifications). |
+| L15 | Changing an assignee after the first assignment (reassignment with approval, FR-ASG-04) is not available yet, so "tasks I was assigned to" visibility is exercised only through first assignments. | Phase 8. |
+| L16 | Admin has no task permissions in the seed matrix (Admin is not automatically a TL), so an Admin can create projects and manage members but cannot create or assign tasks unless given a project role. | By design (permissions matrix, A6). |
+| L17 | Task numbers come from a separate `projects.task_counters` row instead of a column on `projects` (see database-design.md §3.4), to avoid false concurrency conflicts on project edits. | None needed. |
+| L19 | On a heavily loaded machine the "Add member" form can be submitted before its role list has loaded; the click is ignored and the member has to press the button again. Seen once in end-to-end tests run in parallel with the backend suite. | Disable submit until the form has loaded (small UI fix, next phase). |
+| L18 | Fixed in Phase 5: the e2e mail helper decoded every email as quoted-printable, which corrupted links whose token started with two hex characters (`?token=9B…`), and two e2e steps could type into a list page's search box before the form page appeared. Both caused occasional false failures. | Resolved. |
 
 ## Risks
 
