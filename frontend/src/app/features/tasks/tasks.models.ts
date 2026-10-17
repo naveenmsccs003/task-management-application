@@ -31,7 +31,14 @@ export type TaskActionName =
   | 'reviewAlgorithm'
   | 'completeChecklist'
   | 'manageChecklist'
-  | 'adjustTime';
+  | 'adjustTime'
+  | 'submitReview'
+  | 'review'
+  | 'close'
+  | 'reopen'
+  | 'requestReassignment'
+  | 'requestExtension'
+  | 'reportDelay';
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   Draft: 'Draft',
@@ -80,7 +87,8 @@ export interface Task {
   algorithmApproved: boolean;
   labels: string[];
   currentRevision: number;
-  flags: { overdue: boolean; overAllocated: boolean };
+  approvedRevision: number | null;
+  flags: { overdue: boolean; overAllocated: boolean; extensionPending: boolean; reassignmentPending: boolean };
   checklist: { total: number; done: number; mandatoryTotal: number; mandatoryDone: number };
   cancelReason: string | null;
   createdBy: UserRef;
@@ -89,6 +97,7 @@ export interface Task {
   allowedActions: TaskActionName[];
   canViewAlgorithm: boolean;
   canViewTime: boolean;
+  canViewDelays: boolean;
   version: number;
 }
 
@@ -134,6 +143,64 @@ export interface SaveTask {
   version?: number;
 }
 
+export interface ReviewSubmission {
+  id: string;
+  revision: number;
+  summary: string;
+  submittedBy: UserRef | null;
+  submittedAt: string;
+  decision: 'Pending' | 'Approved' | 'RevisionRequested';
+  reviewedBy: UserRef | null;
+  reviewedAt: string | null;
+  comment: string | null;
+  algorithmReapprovalRequired: boolean;
+}
+
+export type ApprovalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Withdrawn' | 'AutoCancelled';
+
+/** A reassignment or deadline-extension request (docs/api-design.md §4.8). */
+export interface ApprovalRequest {
+  id: string;
+  taskId: string;
+  taskKey: string;
+  taskTitle: string;
+  projectId: string;
+  type: 'Reassignment' | 'DeadlineExtension';
+  status: ApprovalRequestStatus;
+  reason: string;
+  requestedBy: UserRef | null;
+  requestedAt: string;
+  proposedAssignee: UserRef | null;
+  algorithmReapprovalRequired: boolean;
+  currentDueDate: string | null;
+  proposedDueDate: string | null;
+  approvedDueDate: string | null;
+  decidedBy: UserRef | null;
+  decidedAt: string | null;
+  decisionComment: string | null;
+  canDecide: boolean;
+  canWithdraw: boolean;
+}
+
+export type DelayCategory = 'BlockedByDependency' | 'UnclearRequirement' | 'TechnicalIssue' | 'Leave' | 'Other';
+
+export const DELAY_CATEGORY_LABELS: Record<DelayCategory, string> = {
+  BlockedByDependency: 'Blocked by a dependency',
+  UnclearRequirement: 'Unclear requirement',
+  TechnicalIssue: 'Technical issue',
+  Leave: 'Leave',
+  Other: 'Other',
+};
+
+export interface DelayReport {
+  id: string;
+  revision: number;
+  category: DelayCategory;
+  description: string;
+  reportedBy: UserRef | null;
+  reportedAt: string;
+}
+
 export interface AlgorithmSubmission {
   id: string;
   version: number;
@@ -141,7 +208,7 @@ export interface AlgorithmSubmission {
   content: string;
   submittedBy: UserRef | null;
   submittedAt: string;
-  decision: 'Pending' | 'Approved' | 'Rejected';
+  decision: 'Pending' | 'Approved' | 'Rejected' | 'Withdrawn';
   decidedBy: UserRef | null;
   decidedAt: string | null;
   decisionComment: string | null;

@@ -180,6 +180,16 @@ public sealed class TaskChecklistItem
         return Result.Success();
     }
 
+    /// <summary>The TL reopens the item while requesting a revision (FR-CHK-06).</summary>
+    public void Reopen(int revision)
+    {
+        IsCompleted = false;
+        CompletedBy = null;
+        CompletedAt = null;
+        Note = null;
+        ReopenedInRevision = revision;
+    }
+
     public Result Uncomplete()
     {
         if (!IsCompleted)

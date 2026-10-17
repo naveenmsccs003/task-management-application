@@ -31,6 +31,7 @@ const JOB_LABELS: Record<string, string> = {
   'session-monitor': 'Session monitor (every minute)',
   'email-delivery': 'Email delivery (every few seconds)',
   cleanup: 'Clean-up (hourly)',
+  'due-date-monitor': 'Due dates and overdue (hourly)',
 };
 
 /** Background jobs and the email queue for Admins (FR-ADM-01, FR-NOT-05). */

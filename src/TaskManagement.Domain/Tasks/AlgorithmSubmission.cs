@@ -7,6 +7,9 @@ public enum AlgorithmDecision
     Pending,
     Approved,
     Rejected,
+
+    /// <summary>The task was reassigned while this version waited; the new assignee submits their own.</summary>
+    Withdrawn,
 }
 
 /// <summary>
@@ -70,6 +73,17 @@ public sealed class AlgorithmSubmission
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(comment);
         return Decide(AlgorithmDecision.Rejected, by, comment, now);
+    }
+
+    /// <summary>Called when the task is reassigned while this version is pending.</summary>
+    public void WithdrawForReassignment(DateTimeOffset now)
+    {
+        if (Decision == AlgorithmDecision.Pending)
+        {
+            Decision = AlgorithmDecision.Withdrawn;
+            DecidedAt = now;
+            DecisionComment = "Withdrawn because the task was reassigned.";
+        }
     }
 
     private Result Decide(AlgorithmDecision decision, Guid by, string? comment, DateTimeOffset now)

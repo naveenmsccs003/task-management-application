@@ -56,6 +56,9 @@ public enum TaskAction
     Close,
     Reopen,
     Cancel,
+
+    /// <summary>An approved reassignment (task-workflow.md §5); recorded even when the state stays the same.</summary>
+    Reassign,
 }
 
 public enum AssignmentKind

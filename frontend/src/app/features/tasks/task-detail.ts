@@ -16,6 +16,9 @@ import { ProjectMember } from '../projects/projects.models';
 import { TaskAlgorithm } from './task-algorithm';
 import { TaskChecklist } from './task-checklist';
 import { TaskComments } from './task-comments';
+import { TaskDelays } from './task-delays';
+import { TaskRequests } from './task-requests';
+import { TaskReview } from './task-review';
 import { TaskTimePanel } from './task-time';
 import { TasksApi, WorkAction } from './tasks.api';
 import { describeHistory, formatAllocation, formatDuration, Task, TASK_STATUS_LABELS, TaskActionName, TaskHistoryEntry } from './tasks.models';
@@ -27,7 +30,7 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
   selector: 'app-task-detail',
   imports: [
     DatePipe, FormsModule, RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, TaskAlgorithm, TaskChecklist, TaskComments, TaskTimePanel,
+    MatSelectModule, TaskAlgorithm, TaskChecklist, TaskComments, TaskDelays, TaskRequests, TaskReview, TaskTimePanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -42,6 +45,12 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
         <span class="status" data-testid="task-status">{{ statusLabels[t.status] }}</span>
         @if (t.flags.overdue) {
           <span class="flag">Overdue</span>
+        }
+        @if (t.flags.extensionPending) {
+          <span class="flag info">Extension pending</span>
+        }
+        @if (t.flags.reassignmentPending) {
+          <span class="flag info">Reassignment pending</span>
         }
       </div>
       @if (t.projectReadOnly) {
@@ -229,6 +238,19 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
             <app-task-time [task]="t" />
           </div>
         }
+        @if (t.status !== 'Draft') {
+          <div>
+            <app-task-review [task]="t" (changed)="afterReview($event)" />
+          </div>
+          <div>
+            <app-task-requests [task]="t" (changed)="reloadTask()" />
+          </div>
+          @if (t.canViewDelays || can('reportDelay')) {
+            <div>
+              <app-task-delays [task]="t" />
+            </div>
+          }
+        }
       </section>
 
       <section class="columns">
@@ -273,6 +295,10 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
       border-radius: 12px;
       background: var(--mat-sys-error-container);
       color: var(--mat-sys-on-error-container);
+    }
+    .flag.info {
+      background: var(--mat-sys-tertiary-container);
+      color: var(--mat-sys-on-tertiary-container);
     }
     .actions {
       display: flex;
@@ -393,7 +419,16 @@ export class TaskDetail implements OnInit {
   }
 
   protected async reloadTask(): Promise<void> {
-    await this.run(async () => this.task.set(await firstValueFrom(this.tasksApi.get(this.id()))));
+    await this.run(async () => {
+      this.task.set(await firstValueFrom(this.tasksApi.get(this.id())));
+      await this.loadHistory();
+    });
+  }
+
+  /** Submitting for review ends the work session, so the timer bar refreshes too. */
+  protected async afterReview(task: Task): Promise<void> {
+    await this.apply(task);
+    await this.activeSession.refresh();
   }
 
   protected allocation(minutes: number | null): string {

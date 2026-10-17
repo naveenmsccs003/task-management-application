@@ -104,6 +104,16 @@ public sealed class ProjectAccess(IAppDbContext db, ICurrentUser currentUser, Pe
         return project is null ? null : (project, permissionsHere);
     }
 
+    /// <summary>An active current member whose project role can work on tasks may be assigned (FR-ASG-01).</summary>
+    public async Task<bool> CanWorkOnTasksAsync(Guid projectId, Guid userId, CancellationToken cancellationToken)
+    {
+        var roleId = await db.ProjectMembers.AsNoTracking()
+            .Where(m => m.ProjectId == projectId && m.UserId == userId && m.RemovedAt == null && db.Users.Any(u => u.Id == userId && u.IsActive))
+            .Select(m => (Guid?)m.ProjectRoleId)
+            .FirstOrDefaultAsync(cancellationToken);
+        return roleId is { } id && (await permissions.GetRoleGrantsAsync(id, cancellationToken)).ContainsKey(PermissionCatalog.TasksWork);
+    }
+
     /// <summary>
     /// For list queries: the projects where the member holds <paramref name="code"/> through their project role,
     /// split by scope, plus whether a Global grant makes the lists irrelevant.

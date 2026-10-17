@@ -125,3 +125,66 @@ internal sealed class IdempotencyRecordConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(r => r.CreatedAt);
     }
 }
+
+internal sealed class ReviewSubmissionConfiguration : IEntityTypeConfiguration<ReviewSubmission>
+{
+    public void Configure(EntityTypeBuilder<ReviewSubmission> builder)
+    {
+        builder.ToTable("review_submissions", Schemas.Tasks, t =>
+            t.HasCheckConstraint("ck_review_submissions_decision", CheckConstraints.In("decision", Enum.GetNames<ReviewDecision>())));
+        builder.HasKey(r => r.Id);
+        builder.Property(r => r.Summary).HasColumnType("text");
+        builder.Property(r => r.Decision).HasConversion<string>().HasMaxLength(30);
+        builder.Property(r => r.Comment).HasMaxLength(ReviewSubmission.CommentMaxLength);
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(r => r.TaskId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(r => r.SubmittedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(r => r.ReviewedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(r => new { r.TaskId, r.Revision });
+
+        // One review waits for a decision at a time.
+        builder.HasIndex(r => r.TaskId).IsUnique().HasFilter("decision = 'Pending'").HasDatabaseName("ux_review_submissions_pending");
+    }
+}
+
+internal sealed class ApprovalRequestConfiguration : IEntityTypeConfiguration<ApprovalRequest>
+{
+    public void Configure(EntityTypeBuilder<ApprovalRequest> builder)
+    {
+        builder.ToTable("approval_requests", Schemas.Tasks, t =>
+        {
+            t.HasCheckConstraint("ck_approval_requests_type", CheckConstraints.In("type", Enum.GetNames<ApprovalRequestType>()));
+            t.HasCheckConstraint("ck_approval_requests_status", CheckConstraints.In("status", Enum.GetNames<ApprovalRequestStatus>()));
+            t.HasCheckConstraint("ck_approval_requests_reason", $"char_length(reason) >= {ApprovalRequest.ReasonMinLength}");
+        });
+        builder.HasKey(r => r.Id);
+        builder.Ignore(r => r.IsPending);
+        builder.Property(r => r.Type).HasConversion<string>().HasMaxLength(30);
+        builder.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(r => r.Reason).HasMaxLength(ApprovalRequest.ReasonMaxLength);
+        builder.Property(r => r.DecisionComment).HasMaxLength(ApprovalRequest.CommentMaxLength);
+        builder.Property(r => r.Version).IsRowVersion();
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(r => r.TaskId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(r => r.RequestedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(r => r.ProposedAssigneeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(r => r.DecidedBy).OnDelete(DeleteBehavior.Restrict);
+
+        // FR-REV-06, FR-DL-04: one pending request of each type per task.
+        builder.HasIndex(r => new { r.TaskId, r.Type }).IsUnique().HasFilter("status = 'Pending'").HasDatabaseName("ux_approval_requests_pending");
+        builder.HasIndex(r => new { r.Status, r.RequestedAt });
+    }
+}
+
+internal sealed class DelayReportConfiguration : IEntityTypeConfiguration<DelayReport>
+{
+    public void Configure(EntityTypeBuilder<DelayReport> builder)
+    {
+        builder.ToTable("delay_reports", Schemas.Tasks, t =>
+            t.HasCheckConstraint("ck_delay_reports_category", CheckConstraints.In("category", Enum.GetNames<DelayCategory>())));
+        builder.HasKey(d => d.Id);
+        builder.Property(d => d.Category).HasConversion<string>().HasMaxLength(30);
+        builder.Property(d => d.Description).HasMaxLength(DelayReport.DescriptionMaxLength);
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(d => d.TaskId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(d => d.ReportedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(d => new { d.TaskId, d.ReportedAt });
+    }
+}

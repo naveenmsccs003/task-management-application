@@ -12,9 +12,10 @@ function task(allowedActions: TaskActionName[], status: Task['status'] = 'ReadyT
     title: 'Build login', description: '', type: 'Feature', priority: 'High', status,
     assignee: { id: 'd1', name: 'Dev One' }, startDate: null, dueDate: '2026-11-01', originalDueDate: '2026-11-01',
     allocatedMinutes: 120, spentSeconds: 0, algorithmRequired: true, algorithmApproved: false, labels: [], currentRevision: 0,
-    flags: { overdue: false, overAllocated: false }, checklist: { total: 1, done: 0, mandatoryTotal: 1, mandatoryDone: 0 },
+    approvedRevision: null, flags: { overdue: false, overAllocated: false, extensionPending: false, reassignmentPending: false },
+    checklist: { total: 1, done: 0, mandatoryTotal: 1, mandatoryDone: 0 },
     cancelReason: null, createdBy: { id: 'u1', name: 'Pat' }, createdAt: '', updatedAt: '', allowedActions,
-    canViewAlgorithm: true, canViewTime: true, version: 1,
+    canViewAlgorithm: true, canViewTime: true, canViewDelays: true, version: 1,
   };
 }
 

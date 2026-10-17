@@ -31,6 +31,8 @@ public sealed record VisibleTask(TaskItem Task, Project Project, ProjectPermissi
 /// </summary>
 public sealed class TaskAccess(IAppDbContext db, ICurrentUser currentUser, ProjectAccess projects)
 {
+    public Guid CurrentUserId => currentUser.RequiredUserId;
+
     public async Task<VisibleTask?> LoadAsync(Guid taskId, bool track, CancellationToken cancellationToken)
     {
         var query = track ? db.Tasks : db.Tasks.AsNoTracking();

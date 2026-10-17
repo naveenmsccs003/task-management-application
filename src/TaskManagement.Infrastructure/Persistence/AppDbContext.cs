@@ -67,6 +67,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<JobRun> JobRuns => Set<JobRun>();
 
+    public DbSet<ReviewSubmission> ReviewSubmissions => Set<ReviewSubmission>();
+
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
+
+    public DbSet<DelayReport> DelayReports => Set<DelayReport>();
+
     public bool IsUniqueViolation(DbUpdateException exception) =>
         exception?.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 

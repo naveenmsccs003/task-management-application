@@ -3,6 +3,7 @@ using TaskManagement.Application.Access;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
+using TaskManagement.Application.Requests;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
 using TaskManagement.Domain.Projects;
@@ -18,6 +19,7 @@ public sealed class ProjectCommands(
     ProjectQueries queries,
     PermissionService permissions,
     ChecklistTemplates templates,
+    RequestService requests,
     IAuditLog auditLog,
     TimeProvider timeProvider)
 {
@@ -166,6 +168,12 @@ public sealed class ProjectCommands(
         if (result.IsFailure)
         {
             return result.Error!;
+        }
+
+        if (project.IsReadOnly)
+        {
+            // Edge case 27: a read-only project has nothing left to approve.
+            await requests.AutoCancelForProjectAsync(project.Id, $"The project was {Project.Describe(target)}.", cancellationToken);
         }
 
         auditLog.Record("project.status_changed", "Project", project.Id.ToString(), new AuditChanges().Change("status", previous, target), project.Id);

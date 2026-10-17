@@ -88,6 +88,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/tasks/task-form').then((m) => m.TaskForm),
   },
   {
+    path: 'approvals',
+    title: 'Approvals · Task Management',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/requests/request-queue').then((m) => m.RequestQueue),
+  },
+  {
     path: 'notifications',
     title: 'Notifications · Task Management',
     canActivate: [permissionGuard('notifications.view', 'Own')],

@@ -28,6 +28,11 @@ public static class TaskWorkflow
 
     public static bool IsAllowed(TaskItemStatus status, TaskAction action) => Array.IndexOf(Allowed[status], action) >= 0;
 
+    /// <summary>States in which a reassignment may be requested and approved (task-workflow.md §5).</summary>
+    public static bool CanReassign(TaskItemStatus status) =>
+        status is TaskItemStatus.AwaitingAlgorithm or TaskItemStatus.AlgorithmSubmitted or TaskItemStatus.ReadyToStart
+            or TaskItemStatus.InProgress or TaskItemStatus.Paused or TaskItemStatus.Stopped or TaskItemStatus.RevisionRequested;
+
     /// <summary>Closed and Cancelled are final and read-only.</summary>
     public static bool IsFinal(TaskItemStatus status) => status is TaskItemStatus.Closed or TaskItemStatus.Cancelled;
 
@@ -69,6 +74,7 @@ public static class TaskWorkflow
         TaskAction.SubmitReview => "submit-review",
         TaskAction.ApproveReview => "approve",
         TaskAction.RequestRevision => "request-revision",
+        TaskAction.Reassign => "reassign",
         _ => action.ToString().ToLowerInvariant(),
     };
 }

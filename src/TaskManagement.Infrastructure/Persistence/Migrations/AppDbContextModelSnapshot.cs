@@ -665,7 +665,7 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.ToTable("notifications", "notifications", t =>
                         {
-                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'AlgorithmSubmitted', 'AlgorithmApproved', 'AlgorithmRejected', 'AllocationWarning', 'AllocationReached', 'SessionAutoClosed')");
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'AlgorithmSubmitted', 'AlgorithmApproved', 'AlgorithmRejected', 'AllocationWarning', 'AllocationReached', 'SessionAutoClosed', 'SubmittedForReview', 'ReviewApproved', 'RevisionRequested', 'TaskClosed', 'TaskReopened', 'ReassignmentRequested', 'ReassignmentDecided', 'TaskReassigned', 'ExtensionRequested', 'ExtensionDecided', 'DelayReported', 'DueSoon', 'Overdue')");
                         });
                 });
 
@@ -689,7 +689,7 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.ToTable("notification_preferences", "notifications", t =>
                         {
-                            t.HasCheckConstraint("ck_notification_preferences_category", "category IN ('Account', 'Assignment', 'Algorithm', 'Time')");
+                            t.HasCheckConstraint("ck_notification_preferences_category", "category IN ('Account', 'Assignment', 'Algorithm', 'Time', 'Review', 'Requests', 'Deadlines')");
                         });
                 });
 
@@ -1020,7 +1020,237 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.ToTable("algorithm_submissions", "tasks", t =>
                         {
-                            t.HasCheckConstraint("ck_algorithm_submissions_decision", "decision IN ('Pending', 'Approved', 'Rejected')");
+                            t.HasCheckConstraint("ck_algorithm_submissions_decision", "decision IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.ApprovalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AlgorithmReapprovalRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("algorithm_reapproval_required");
+
+                    b.Property<DateOnly?>("ApprovedDueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("approved_due_date");
+
+                    b.Property<DateOnly?>("CurrentDueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("current_due_date");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecisionComment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("decision_comment");
+
+                    b.Property<Guid?>("ProposedAssigneeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposed_assignee_id");
+
+                    b.Property<DateOnly?>("ProposedDueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_due_date");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("type");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_approval_requests");
+
+                    b.HasIndex("DecidedBy")
+                        .HasDatabaseName("ix_approval_requests_decided_by");
+
+                    b.HasIndex("ProposedAssigneeId")
+                        .HasDatabaseName("ix_approval_requests_proposed_assignee_id");
+
+                    b.HasIndex("RequestedBy")
+                        .HasDatabaseName("ix_approval_requests_requested_by");
+
+                    b.HasIndex("Status", "RequestedAt")
+                        .HasDatabaseName("ix_approval_requests_status_requested_at");
+
+                    b.HasIndex("TaskId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ux_approval_requests_pending")
+                        .HasFilter("status = 'Pending'");
+
+                    b.ToTable("approval_requests", "tasks", t =>
+                        {
+                            t.HasCheckConstraint("ck_approval_requests_reason", "char_length(reason) >= 10");
+
+                            t.HasCheckConstraint("ck_approval_requests_status", "status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn', 'AutoCancelled')");
+
+                            t.HasCheckConstraint("ck_approval_requests_type", "type IN ('Reassignment', 'DeadlineExtension')");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.DelayReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset>("ReportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reported_at");
+
+                    b.Property<Guid>("ReportedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_delay_reports");
+
+                    b.HasIndex("ReportedBy")
+                        .HasDatabaseName("ix_delay_reports_reported_by");
+
+                    b.HasIndex("TaskId", "ReportedAt")
+                        .HasDatabaseName("ix_delay_reports_task_id_reported_at");
+
+                    b.ToTable("delay_reports", "tasks", t =>
+                        {
+                            t.HasCheckConstraint("ck_delay_reports_category", "category IN ('BlockedByDependency', 'UnclearRequirement', 'TechnicalIssue', 'Leave', 'Other')");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.ReviewSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AlgorithmReapprovalRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("algorithm_reapproval_required");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("decision");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_review_submissions");
+
+                    b.HasIndex("ReviewedBy")
+                        .HasDatabaseName("ix_review_submissions_reviewed_by");
+
+                    b.HasIndex("SubmittedBy")
+                        .HasDatabaseName("ix_review_submissions_submitted_by");
+
+                    b.HasIndex("TaskId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_review_submissions_pending")
+                        .HasFilter("decision = 'Pending'");
+
+                    b.HasIndex("TaskId", "Revision")
+                        .HasDatabaseName("ix_review_submissions_task_id_revision");
+
+                    b.ToTable("review_submissions", "tasks", t =>
+                        {
+                            t.HasCheckConstraint("ck_review_submissions_decision", "decision IN ('Pending', 'Approved', 'RevisionRequested')");
                         });
                 });
 
@@ -1180,6 +1410,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("allocated_minutes");
 
+                    b.Property<int?>("ApprovedRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("approved_revision");
+
                     b.Property<Guid?>("AssigneeId")
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_id");
@@ -1200,6 +1434,14 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ChecklistTemplateId")
                         .HasColumnType("uuid")
                         .HasColumnName("checklist_template_id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1222,9 +1464,17 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("due_date");
 
+                    b.Property<DateOnly?>("DueSoonNotifiedFor")
+                        .HasColumnType("date")
+                        .HasColumnName("due_soon_notified_for");
+
                     b.Property<DateTimeOffset?>("FirstStartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("first_started_at");
+
+                    b.Property<bool>("IsOverdue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_overdue");
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -1248,6 +1498,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly?>("OriginalDueDate")
                         .HasColumnType("date")
                         .HasColumnName("original_due_date");
+
+                    b.Property<DateOnly?>("OverdueNotifiedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("overdue_notified_on");
 
                     b.Property<string>("Priority")
                         .IsRequired()
@@ -1404,7 +1658,7 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.ToTable("task_status_history", "tasks", t =>
                         {
-                            t.HasCheckConstraint("ck_task_status_history_action", "action IN ('Create', 'Update', 'Assign', 'SubmitAlgorithm', 'ApproveAlgorithm', 'RejectAlgorithm', 'Start', 'Pause', 'Resume', 'Stop', 'SubmitReview', 'ApproveReview', 'RequestRevision', 'Close', 'Reopen', 'Cancel')");
+                            t.HasCheckConstraint("ck_task_status_history_action", "action IN ('Create', 'Update', 'Assign', 'SubmitAlgorithm', 'ApproveAlgorithm', 'RejectAlgorithm', 'Start', 'Pause', 'Resume', 'Stop', 'SubmitReview', 'ApproveReview', 'RequestRevision', 'Close', 'Reopen', 'Cancel', 'Reassign')");
 
                             t.HasCheckConstraint("ck_task_status_history_to_status", "to_status IN ('Draft', 'AwaitingAlgorithm', 'AlgorithmSubmitted', 'ReadyToStart', 'InProgress', 'Paused', 'Stopped', 'InReview', 'RevisionRequested', 'Approved', 'Closed', 'Cancelled')");
                         });
@@ -1728,6 +1982,75 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_algorithm_submissions_tasks_task_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.ApprovalRequest", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_approval_requests_users_decided_by");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ProposedAssigneeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_approval_requests_users_proposed_assignee_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_approval_requests_users_requested_by");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_approval_requests_tasks_task_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.DelayReport", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReportedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_delay_reports_users_reported_by");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_delay_reports_tasks_task_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.ReviewSubmission", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_review_submissions_users_reviewed_by");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("SubmittedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_review_submissions_users_submitted_by");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_review_submissions_tasks_task_id");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Tasks.TaskAssignment", b =>

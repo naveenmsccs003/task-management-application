@@ -60,6 +60,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Email:BackgroundWorkerEnabled", "false"); // tests call FlushEmailsAsync instead
         builder.UseSetting("Jobs:SessionMonitorEnabled", "false"); // tests run the monitor explicitly
         builder.UseSetting("Jobs:CleanupEnabled", "false");
+        builder.UseSetting("Jobs:DueDatesEnabled", "false");
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);

@@ -10,6 +10,9 @@ public enum NotificationCategory
     Assignment,
     Algorithm,
     Time,
+    Review,
+    Requests,
+    Deadlines,
 }
 
 /// <summary>The events that produce notifications so far (FR-NOT-03). Later phases add review, request and GitLab events.</summary>
@@ -22,6 +25,19 @@ public enum NotificationType
     AllocationWarning,
     AllocationReached,
     SessionAutoClosed,
+    SubmittedForReview,
+    ReviewApproved,
+    RevisionRequested,
+    TaskClosed,
+    TaskReopened,
+    ReassignmentRequested,
+    ReassignmentDecided,
+    TaskReassigned,
+    ExtensionRequested,
+    ExtensionDecided,
+    DelayReported,
+    DueSoon,
+    Overdue,
 }
 
 public static class NotificationCatalog
@@ -31,6 +47,11 @@ public static class NotificationCatalog
         NotificationType.TaskAssigned => NotificationCategory.Assignment,
         NotificationType.AlgorithmSubmitted or NotificationType.AlgorithmApproved or NotificationType.AlgorithmRejected => NotificationCategory.Algorithm,
         NotificationType.AllocationWarning or NotificationType.AllocationReached or NotificationType.SessionAutoClosed => NotificationCategory.Time,
+        NotificationType.SubmittedForReview or NotificationType.ReviewApproved or NotificationType.RevisionRequested
+            or NotificationType.TaskClosed or NotificationType.TaskReopened => NotificationCategory.Review,
+        NotificationType.ReassignmentRequested or NotificationType.ReassignmentDecided or NotificationType.TaskReassigned
+            or NotificationType.ExtensionRequested or NotificationType.ExtensionDecided => NotificationCategory.Requests,
+        NotificationType.DelayReported or NotificationType.DueSoon or NotificationType.Overdue => NotificationCategory.Deadlines,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown notification type."),
     };
 

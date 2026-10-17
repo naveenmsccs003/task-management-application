@@ -4,6 +4,7 @@ using TaskManagement.Application.Audit;
 using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Notifications;
+using TaskManagement.Application.Requests;
 using TaskManagement.Application.Work;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
@@ -24,10 +25,10 @@ public sealed class TaskCommands(
     ProjectAccess projects,
     TaskAccess access,
     TaskQueries queries,
-    PermissionService permissions,
     ChecklistTemplates templates,
     TaskChecklist checklist,
     WorkService work,
+    RequestService requests,
     Notifier notifier,
     IAuditLog auditLog,
     TimeProvider timeProvider)
@@ -205,7 +206,7 @@ public sealed class TaskCommands(
         }
 
         var task = visible.Task;
-        if (!await CanWorkInProjectAsync(task.ProjectId, command.AssigneeId, cancellationToken))
+        if (!await projects.CanWorkOnTasksAsync(task.ProjectId, command.AssigneeId, cancellationToken))
         {
             return new FieldErrors().Add("assigneeId", "Choose an active project member whose project role can work on tasks.").ToError();
         }
@@ -273,6 +274,9 @@ public sealed class TaskCommands(
 
         // T15: cancelling an In progress task ends its work session.
         await work.CloseActiveSessionAsync(task.Id, SessionEndReason.Cancelled, now, cancellationToken);
+
+        // Edge case 26: pending reassignment or extension requests end with the task.
+        await requests.AutoCancelPendingAsync(task.Id, "The task was cancelled.", cancellationToken);
 
         auditLog.Record("task.cancelled", "Task", task.Id.ToString(), new AuditChanges()
             .Change("status", previousStatus, task.Status)
@@ -362,13 +366,4 @@ public sealed class TaskCommands(
                 && (m.ProjectRoleId == SystemRoles.TeamLeaderId || m.ProjectRoleId == SystemRoles.ProjectManagerId)
                 && db.Users.Any(u => u.Id == m.UserId && u.IsActive),
             cancellationToken);
-
-    private async Task<bool> CanWorkInProjectAsync(Guid projectId, Guid userId, CancellationToken cancellationToken)
-    {
-        var roleId = await db.ProjectMembers
-            .Where(m => m.ProjectId == projectId && m.UserId == userId && m.RemovedAt == null && db.Users.Any(u => u.Id == userId && u.IsActive))
-            .Select(m => (Guid?)m.ProjectRoleId)
-            .FirstOrDefaultAsync(cancellationToken);
-        return roleId is { } id && (await permissions.GetRoleGrantsAsync(id, cancellationToken)).ContainsKey(PermissionCatalog.TasksWork);
-    }
 }

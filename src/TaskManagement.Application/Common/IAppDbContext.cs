@@ -65,6 +65,12 @@ public interface IAppDbContext
 
     DbSet<JobRun> JobRuns { get; }
 
+    DbSet<ReviewSubmission> ReviewSubmissions { get; }
+
+    DbSet<ApprovalRequest> ApprovalRequests { get; }
+
+    DbSet<DelayReport> DelayReports { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);

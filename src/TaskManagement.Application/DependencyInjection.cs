@@ -4,10 +4,14 @@ using TaskManagement.Application.Algorithms;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
+using TaskManagement.Application.Deadlines;
+using TaskManagement.Application.Delays;
 using TaskManagement.Application.Identity;
 using TaskManagement.Application.Members;
 using TaskManagement.Application.Notifications;
 using TaskManagement.Application.Projects;
+using TaskManagement.Application.Requests;
+using TaskManagement.Application.Review;
 using TaskManagement.Application.Settings;
 using TaskManagement.Application.Tasks;
 using TaskManagement.Application.Time;
@@ -68,6 +72,12 @@ public static class DependencyInjection
         services.AddScoped<NotificationService>();
         services.AddScoped<JobRecorder>();
         services.AddScoped<RetentionCleanup>();
+
+        // Review, requests, delays and due dates
+        services.AddScoped<ReviewService>();
+        services.AddScoped<RequestService>();
+        services.AddScoped<DelayService>();
+        services.AddScoped<DueDateMonitor>();
 
         return services;
     }

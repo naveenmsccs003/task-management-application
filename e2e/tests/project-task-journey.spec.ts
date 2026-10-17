@@ -17,11 +17,12 @@ async function addMember(page: Page, email: string, name: string, role: string):
 }
 
 /**
- * Journey 2 (project, task, assignment, algorithm rejected then approved), journey 3 up to review (work sessions and
- * checklist; review arrives in Phase 8) and journey 5 (another developer gets "not found" by URL).
+ * Journey 2 (project, task, assignment, algorithm rejected then approved), journey 3 (work sessions, checklist, review
+ * with a revision, approval and closure), journey 4 (deadline extension approved) and journey 5 (another developer gets
+ * "not found" by URL).
  */
-test('PM sets up a task, TL assigns and approves the algorithm, developer works on it, others cannot open it', async ({ page }) => {
-  test.setTimeout(300_000); // four accounts and eight sign-ins
+test('task lifecycle: setup, algorithm, work, review with revision, extension, closure; others cannot open it', async ({ page }) => {
+  test.setTimeout(600_000); // four accounts and many sign-ins
   const stamp = Date.now();
   const key = `E${String(stamp).slice(-6)}`;
   const pm = { email: `e2e-pm-${stamp}@example.com`, name: 'Pat Manager' };
@@ -142,6 +143,53 @@ test('PM sets up a task, TL assigns and approves the algorithm, developer works 
   await page.getByRole('button', { name: 'Stop work' }).click();
   await expect(page.getByTestId('task-status')).toHaveText('Stopped');
   await expect(page.getByRole('table', { name: 'Work sessions' }).getByRole('row')).toHaveCount(3); // header + 2 sessions
+
+  // Journey 3 continued: submit for review.
+  await page.getByLabel('Summary of the work', { exact: true }).fill('Form built and validated.');
+  await page.getByRole('button', { name: 'Submit for review' }).click();
+  await expect(page.getByTestId('task-status')).toHaveText('In review');
+  await signOut(page);
+
+  // The TL asks for changes and reopens the checklist item.
+  await signIn(page, tl.email, password);
+  await page.goto(taskUrl);
+  await page.getByLabel('Review comment (required to request changes)', { exact: true }).fill('Show an error message for invalid emails.');
+  await page.getByRole('checkbox', { name: 'Form validates email' }).last().check();
+  await page.getByRole('button', { name: 'Request changes' }).click();
+  await expect(page.getByTestId('task-status')).toHaveText('Revision requested');
+  await signOut(page);
+
+  // The developer reworks it, resubmits, and asks for more time (journey 4).
+  await signIn(page, dev.email, password);
+  await page.goto(taskUrl);
+  await expect(page.getByText('0 of 1 required items done.')).toBeVisible();
+  await page.getByRole('button', { name: 'Start work' }).click();
+  await expect(page.getByTestId('task-status')).toHaveText('In progress');
+  await page.getByRole('checkbox', { name: /Form validates email/ }).first().check();
+  await expect(page.getByText('1 of 1 required items done.')).toBeVisible();
+  await page.getByLabel('New due date', { exact: true }).fill('2027-03-15');
+  await page.getByLabel('Reason (at least 10 characters)', { exact: true }).last().fill('The extra validation needs more testing.');
+  await page.getByRole('button', { name: 'Request extension' }).click();
+  await expect(page.getByText('Extension pending')).toBeVisible();
+  await page.getByLabel('Summary of the work', { exact: true }).fill('Error message added.');
+  await page.getByRole('button', { name: 'Submit for review' }).click();
+  await expect(page.getByTestId('task-status')).toHaveText('In review');
+  await signOut(page);
+
+  // The TL approves the extension and the second revision; the PM closes the task.
+  await signIn(page, tl.email, password);
+  await page.getByRole('link', { name: 'Approvals' }).click();
+  await page.getByRole('button', { name: 'Approve', exact: true }).first().click();
+  await expect(page.getByText('Nothing is waiting for your decision.')).toBeVisible();
+  await page.goto(taskUrl);
+  await expect(page.getByText('Mar 15, 2027')).toBeVisible();
+  await page.getByRole('button', { name: 'Approve', exact: true }).click();
+  await expect(page.getByTestId('task-status')).toHaveText('Approved');
+  await signOut(page);
+  await signIn(page, pm.email, password);
+  await page.goto(taskUrl);
+  await page.getByRole('button', { name: 'Close task' }).click();
+  await expect(page.getByTestId('task-status')).toHaveText('Closed');
   await signOut(page);
 
   // Journey 5: another developer of the same project cannot open the task by URL.

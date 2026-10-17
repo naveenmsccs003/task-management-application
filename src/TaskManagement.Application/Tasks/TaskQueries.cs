@@ -10,7 +10,7 @@ using TaskManagement.Domain.Tasks;
 namespace TaskManagement.Application.Tasks;
 
 /// <summary>Task reads: the filtered list (FR-TASK-07), one task with its allowed actions, and its timeline.</summary>
-public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService time, TimeProvider timeProvider)
+public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService time)
 {
     /// <summary>Fields the list can be sorted by (docs/api-design.md §1: only allow-listed fields).</summary>
     public static IReadOnlyList<string> SortFields { get; } = ["key", "title", "dueDate", "priority", "createdAt", "updatedAt"];
@@ -55,14 +55,10 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
             tasks = tasks.Where(t => t.DueDate <= dueTo);
         }
 
-        var today = Today();
+        // The flag is kept by the due-date job in each assignee's time zone (FR-DL-05).
         if (query.Overdue is { } overdue)
         {
-            tasks = overdue
-                ? tasks.Where(t => t.DueDate < today
-                    && t.Status != TaskItemStatus.Approved && t.Status != TaskItemStatus.Closed && t.Status != TaskItemStatus.Cancelled)
-                : tasks.Where(t => !(t.DueDate < today
-                    && t.Status != TaskItemStatus.Approved && t.Status != TaskItemStatus.Closed && t.Status != TaskItemStatus.Cancelled));
+            tasks = tasks.Where(t => t.IsOverdue == overdue);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Q))
@@ -96,6 +92,7 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
                 t.Status,
                 Assignee = db.Users.Where(u => u.Id == t.AssigneeId).Select(u => new UserRef(u.Id, u.FullName)).FirstOrDefault(),
                 t.DueDate,
+                t.IsOverdue,
                 t.Labels,
                 t.UpdatedAt,
             })
@@ -104,7 +101,7 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
         var items = rows
             .Select(r => new TaskListItemDto(
                 r.Id, r.Key, r.ProjectId, r.ProjectKey, r.Title, r.Type, r.Priority, r.Status, r.Assignee, r.DueDate,
-                IsOverdue(r.DueDate, r.Status, today), r.Labels, r.UpdatedAt))
+                r.IsOverdue, r.Labels, r.UpdatedAt))
             .ToList();
         return new PagedResult<TaskListItemDto>(items, query.Page.SafePage, query.Page.SafePageSize, total);
     }
@@ -164,8 +161,11 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
             .Where(u => userIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => new UserRef(u.Id, u.FullName), cancellationToken);
         var hasComments = await db.TaskComments.AnyAsync(c => c.TaskId == task.Id, cancellationToken);
-        var today = Today();
         var spent = await time.SpentSecondsAsync(task.Id, cancellationToken);
+        var pending = await db.ApprovalRequests.AsNoTracking()
+            .Where(r => r.TaskId == task.Id && r.Status == ApprovalRequestStatus.Pending)
+            .Select(r => r.Type)
+            .ToListAsync(cancellationToken);
         var checklist = await db.TaskChecklistItems.AsNoTracking()
             .Where(i => i.TaskId == task.Id)
             .GroupBy(i => 1)
@@ -195,15 +195,21 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
             task.AlgorithmApprovedSubmissionId is not null,
             task.Labels,
             task.CurrentRevision,
-            new TaskFlagsDto(IsOverdue(task.DueDate, task.Status, today), task.AllocatedMinutes is { } minutes && spent > minutes * 60L),
+            task.ApprovedRevision,
+            new TaskFlagsDto(
+                task.IsOverdue,
+                task.AllocatedMinutes is { } minutes && spent > minutes * 60L,
+                pending.Contains(ApprovalRequestType.DeadlineExtension),
+                pending.Contains(ApprovalRequestType.Reassignment)),
             checklist,
             task.CancelReason,
             names.GetValueOrDefault(task.CreatedBy) ?? new UserRef(task.CreatedBy, "Unknown"),
             task.CreatedAt,
             task.UpdatedAt,
-            AllowedActions(visible, hasComments),
+            AllowedActions(visible, hasComments, pending),
             visible.Allows(PermissionCatalog.AlgorithmsView),
             visible.Allows(PermissionCatalog.TimeView),
+            visible.Allows(PermissionCatalog.DelaysView),
             task.Version);
     }
 
@@ -211,12 +217,17 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
     /// The actions offered to the caller, using the same checks the commands enforce. Workflow actions of later phases
     /// (submit for review, review, close, …) are added here as they are implemented.
     /// </summary>
-    internal static IReadOnlyList<string> AllowedActions(VisibleTask visible, bool hasComments)
+    internal static IReadOnlyList<string> AllowedActions(VisibleTask visible, bool hasComments, IReadOnlyCollection<ApprovalRequestType> pendingRequests)
     {
         var (task, project, permissions, _, _) = visible;
-        if (project.IsReadOnly || TaskWorkflow.IsFinal(task.Status))
+        if (project.IsReadOnly)
         {
             return [];
+        }
+
+        if (TaskWorkflow.IsFinal(task.Status))
+        {
+            return task.Status == TaskItemStatus.Closed && permissions.HasProjectWide(PermissionCatalog.TasksReopen) ? ["reopen"] : [];
         }
 
         var actions = new List<string>();
@@ -286,14 +297,44 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
             actions.Add("adjustTime");
         }
 
+        // Review and closure (T10–T13).
+        if (visible.IsAssignee && visible.Allows(PermissionCatalog.TasksSubmit) && TaskWorkflow.IsAllowed(task.Status, TaskAction.SubmitReview))
+        {
+            actions.Add("submitReview");
+        }
+
+        if (!visible.IsAssignee && permissions.HasProjectWide(PermissionCatalog.TasksReview) && task.Status == TaskItemStatus.InReview)
+        {
+            actions.Add("review");
+        }
+
+        if (permissions.HasProjectWide(PermissionCatalog.TasksClose) && task.Status == TaskItemStatus.Approved && task.ApprovedRevision == task.CurrentRevision)
+        {
+            actions.Add("close");
+        }
+
+        // Requests and delays (task-workflow.md §5–7).
+        if (permissions.HasProjectWide(PermissionCatalog.TasksAssign) && TaskWorkflow.CanReassign(task.Status)
+            && !pendingRequests.Contains(ApprovalRequestType.Reassignment))
+        {
+            actions.Add("requestReassignment");
+        }
+
+        var extensionScope = permissions.Scope(PermissionCatalog.DeadlinesRequest);
+        if (task.DueDate is not null && task.Status != TaskItemStatus.Draft && TaskWorkflow.IsOpen(task.Status)
+            && !pendingRequests.Contains(ApprovalRequestType.DeadlineExtension)
+            && (extensionScope >= PermissionScope.Project || (extensionScope == PermissionScope.Own && visible.IsAssignee)))
+        {
+            actions.Add("requestExtension");
+        }
+
+        if (visible.IsAssignee && visible.Allows(PermissionCatalog.DelaysReport) && TaskWorkflow.IsOpen(task.Status))
+        {
+            actions.Add("reportDelay");
+        }
+
         return actions;
     }
-
-    /// <summary>Past the due date and still open. Dates are compared in UTC until per-member time zones are applied to flags (Phase 8).</summary>
-    internal static bool IsOverdue(DateOnly? dueDate, TaskItemStatus status, DateOnly today) =>
-        dueDate is { } due && due < today && TaskWorkflow.IsOpen(status);
-
-    private DateOnly Today() => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 
     private static bool LooksLikeKey(string text)
     {

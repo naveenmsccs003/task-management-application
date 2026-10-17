@@ -95,6 +95,22 @@ public sealed class TaskItem
 
     public int CurrentRevision { get; private set; }
 
+    /// <summary>The revision the TL approved; closing needs it to be the current one (FR-RVW-04).</summary>
+    public int? ApprovedRevision { get; private set; }
+
+    public DateTimeOffset? ClosedAt { get; private set; }
+
+    public Guid? ClosedBy { get; private set; }
+
+    /// <summary>Past the due date (in the assignee's time zone) and still open; kept by the due-date job (FR-DL-05).</summary>
+    public bool IsOverdue { get; private set; }
+
+    /// <summary>The day the last overdue notification was sent (once per day while overdue).</summary>
+    public DateOnly? OverdueNotifiedOn { get; private set; }
+
+    /// <summary>The due date the "due soon" notification was sent for; a new due date can notify again.</summary>
+    public DateOnly? DueSoonNotifiedFor { get; private set; }
+
     /// <summary>Revision for which the allocated-hour warning was sent (once per revision, WQ2).</summary>
     public int? WarnNotifiedRevision { get; private set; }
 
@@ -255,6 +271,7 @@ public sealed class TaskItem
         }
 
         CancelReason = reason.Trim();
+        IsOverdue = false;
         CancelledAt = now;
         CancelledBy = by;
         RecordStatus(Status, TaskItemStatus.Cancelled, TaskAction.Cancel, by, CancelReason, now);
@@ -365,6 +382,169 @@ public sealed class TaskItem
         RecordStatus(Status, TaskItemStatus.Stopped, TaskAction.Stop, null, reason, now);
         Status = TaskItemStatus.Stopped;
         UpdatedAt = now;
+    }
+
+    /// <summary>T10: the assignee submits the current revision for review (the caller has checked the checklist).</summary>
+    public Result SubmitReview(Guid by, DateTimeOffset now) => Transition(TaskAction.SubmitReview, TaskItemStatus.InReview, by, null, now);
+
+    /// <summary>
+    /// T11: the TL approves the current revision. With the project's "close on approval" option the task closes at once (Q2).
+    /// </summary>
+    public Result ApproveReview(Guid by, string? comment, bool closeOnApproval, DateTimeOffset now)
+    {
+        var result = Transition(TaskAction.ApproveReview, TaskItemStatus.Approved, by, comment, now);
+        if (result.IsFailure)
+        {
+            return result;
+        }
+
+        ApprovedRevision = CurrentRevision;
+        IsOverdue = false;
+        return closeOnApproval ? Close(by, "Closed on approval (project setting).", now) : Result.Success();
+    }
+
+    /// <summary>
+    /// T12: the TL sends the task back. The revision number goes up (FR-REV-01) and the allocated-hour notifications are
+    /// judged afresh (WQ2). With "algorithm re-approval required" the task waits for a new algorithm (FR-ALG-06).
+    /// </summary>
+    public Result RequestRevision(Guid by, string comment, bool algorithmReapprovalRequired, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comment);
+        if (!TaskWorkflow.IsAllowed(Status, TaskAction.RequestRevision))
+        {
+            return TaskWorkflow.InvalidTransition(Key, Status, TaskAction.RequestRevision);
+        }
+
+        StartNewRevision();
+        var target = TaskItemStatus.RevisionRequested;
+        if (algorithmReapprovalRequired)
+        {
+            AlgorithmRequired = true;
+            AlgorithmApprovedSubmissionId = null;
+            target = TaskItemStatus.AwaitingAlgorithm;
+        }
+
+        RecordStatus(Status, target, TaskAction.RequestRevision, by, comment.Trim(), now);
+        Status = target;
+        Touch(by, now);
+        return Result.Success();
+    }
+
+    /// <summary>T13: final closure, only after the TL approved the current revision (FR-RVW-04, AC-RVW-3).</summary>
+    public Result Close(Guid by, string? comment, DateTimeOffset now)
+    {
+        if (Status == TaskItemStatus.Approved && ApprovedRevision != CurrentRevision)
+        {
+            return Error.Conflict("task.not_approved", $"Revision {CurrentRevision} of {Key} has not been approved yet.");
+        }
+
+        var result = Transition(TaskAction.Close, TaskItemStatus.Closed, by, comment, now);
+        if (result.IsSuccess)
+        {
+            ClosedAt = now;
+            ClosedBy = by;
+            IsOverdue = false;
+        }
+
+        return result;
+    }
+
+    /// <summary>T14: reopen a closed task with a reason; it starts a new revision (FR-RVW-05).</summary>
+    public Result Reopen(Guid by, string reason, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (!TaskWorkflow.IsAllowed(Status, TaskAction.Reopen))
+        {
+            return TaskWorkflow.InvalidTransition(Key, Status, TaskAction.Reopen);
+        }
+
+        StartNewRevision();
+        RecordStatus(Status, TaskItemStatus.RevisionRequested, TaskAction.Reopen, by, reason.Trim(), now);
+        Status = TaskItemStatus.RevisionRequested;
+        ClosedAt = null;
+        ClosedBy = null;
+        Touch(by, now);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Applies an approved reassignment (task-workflow.md §5). The new state: Awaiting algorithm when re-approval is required
+    /// or a required algorithm was never approved; Ready to start if work never started; otherwise Stopped (the new assignee
+    /// presses Start). The caller closes the old assignee's session.
+    /// </summary>
+    public Result Reassign(Guid newAssigneeId, string reason, bool algorithmReapprovalRequired, Guid approvedBy, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (!TaskWorkflow.CanReassign(Status))
+        {
+            return Error.Conflict("task.cannot_reassign", $"Task {Key} is '{TaskWorkflow.Describe(Status)}' and cannot be reassigned now.");
+        }
+
+        if (algorithmReapprovalRequired && AlgorithmRequired)
+        {
+            AlgorithmApprovedSubmissionId = null;
+        }
+
+        var target = AlgorithmRequired && AlgorithmApprovedSubmissionId is null
+            ? TaskItemStatus.AwaitingAlgorithm
+            : FirstStartedAt is null ? TaskItemStatus.ReadyToStart : TaskItemStatus.Stopped;
+        _assignments.Add(TaskAssignment.Create(Id, AssigneeId, newAssigneeId, AssignmentKind.Reassignment, reason.Trim(), approvedBy, now));
+        RecordStatus(Status, target, TaskAction.Reassign, approvedBy, reason.Trim(), now);
+        AssigneeId = newAssigneeId;
+        Status = target;
+        Touch(approvedBy, now);
+        return Result.Success();
+    }
+
+    /// <summary>An approved extension moves the due date; the original stays in <see cref="OriginalDueDate"/> (FR-DL-03).</summary>
+    public void ExtendDueDate(DateOnly newDueDate, Guid approvedBy, DateTimeOffset now)
+    {
+        DueDate = newDueDate;
+        Touch(approvedBy, now);
+    }
+
+    /// <summary>Sets the Overdue flag for <paramref name="today"/> (the assignee's local date). Returns true when it changed.</summary>
+    public bool RefreshOverdue(DateOnly today)
+    {
+        var overdue = DueDate is { } due && due < today && TaskWorkflow.IsOpen(Status);
+        if (overdue == IsOverdue)
+        {
+            return false;
+        }
+
+        IsOverdue = overdue;
+        return true;
+    }
+
+    /// <summary>True (and recorded) when today's overdue notification is due: once per day while overdue.</summary>
+    public bool TakeOverdueNotification(DateOnly today)
+    {
+        if (!IsOverdue || OverdueNotifiedOn == today)
+        {
+            return false;
+        }
+
+        OverdueNotifiedOn = today;
+        return true;
+    }
+
+    /// <summary>True (and recorded) once per due date when it is today or tomorrow and the task is still open.</summary>
+    public bool TakeDueSoonNotification(DateOnly today)
+    {
+        if (DueDate is not { } due || !TaskWorkflow.IsOpen(Status) || IsOverdue || due < today || due > today.AddDays(1) || DueSoonNotifiedFor == due)
+        {
+            return false;
+        }
+
+        DueSoonNotifiedFor = due;
+        return true;
+    }
+
+    private void StartNewRevision()
+    {
+        CurrentRevision++;
+        WarnNotifiedRevision = null;
+        LimitNotifiedRevision = null;
     }
 
     private Result Transition(TaskAction action, TaskItemStatus target, Guid by, string? comment, DateTimeOffset now)

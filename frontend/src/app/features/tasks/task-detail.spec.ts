@@ -28,7 +28,8 @@ const task: Task = {
   algorithmApproved: false,
   labels: ['backend'],
   currentRevision: 0,
-  flags: { overdue: false, overAllocated: false },
+  approvedRevision: null,
+  flags: { overdue: false, overAllocated: false, extensionPending: false, reassignmentPending: false },
   checklist: { total: 0, done: 0, mandatoryTotal: 0, mandatoryDone: 0 },
   cancelReason: null,
   createdBy: { id: 'u1', name: 'Pat Manager' },
@@ -37,6 +38,7 @@ const task: Task = {
   allowedActions: ['update', 'assign', 'cancel', 'delete', 'comment'],
   canViewAlgorithm: true,
   canViewTime: true,
+  canViewDelays: true,
   version: 1,
 };
 
@@ -73,6 +75,9 @@ describe('TaskDetail', () => {
     backend.match('/api/v1/tasks/t1/algorithm').forEach((r) => r.flush([]));
     backend.match('/api/v1/tasks/t1/checklist').forEach((r) => r.flush([]));
     backend.match('/api/v1/tasks/t1/time').forEach((r) => r.flush(null));
+    backend.match('/api/v1/tasks/t1/reviews').forEach((r) => r.flush([]));
+    backend.match('/api/v1/tasks/t1/requests').forEach((r) => r.flush([]));
+    backend.match('/api/v1/tasks/t1/delay-reports').forEach((r) => r.flush([]));
   }
 
   function buttons(element: HTMLElement): string[] {

@@ -5,6 +5,11 @@ import { toParams } from '../../core/api/http-params';
 import { PagedResult } from '../../core/api/paged';
 import {
   AlgorithmSubmission,
+  ApprovalRequest,
+  ApprovalRequestStatus,
+  DelayCategory,
+  DelayReport,
+  ReviewSubmission,
   ChecklistItem,
   SaveTask,
   Task,
@@ -91,6 +96,63 @@ export class TasksApi {
 
   adjustTime(id: string, userId: string, minutes: number, reason: string): Observable<TaskTime> {
     return this.http.post<TaskTime>(`/api/v1/tasks/${id}/time-adjustments`, { userId, minutes, reason });
+  }
+
+  submitReview(id: string, summary: string): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/submit-review`, { summary });
+  }
+
+  approveReview(id: string, comment: string | null): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/approve`, { comment });
+  }
+
+  requestRevision(id: string, comment: string, reopenChecklistItemIds: string[], algorithmReapprovalRequired: boolean): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/request-revision`, { comment, reopenChecklistItemIds, algorithmReapprovalRequired });
+  }
+
+  close(id: string): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/close`, {});
+  }
+
+  reopen(id: string, reason: string): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/reopen`, { reason });
+  }
+
+  reviews(id: string): Observable<ReviewSubmission[]> {
+    return this.http.get<ReviewSubmission[]>(`/api/v1/tasks/${id}/reviews`);
+  }
+
+  requests(id: string): Observable<ApprovalRequest[]> {
+    return this.http.get<ApprovalRequest[]>(`/api/v1/tasks/${id}/requests`);
+  }
+
+  requestReassignment(id: string, newAssigneeId: string, reason: string, algorithmReapprovalRequired: boolean): Observable<ApprovalRequest[]> {
+    return this.http.post<ApprovalRequest[]>(`/api/v1/tasks/${id}/reassignment-requests`, { newAssigneeId, reason, algorithmReapprovalRequired });
+  }
+
+  requestExtension(id: string, proposedDueDate: string, reason: string): Observable<ApprovalRequest[]> {
+    return this.http.post<ApprovalRequest[]>(`/api/v1/tasks/${id}/extension-requests`, { proposedDueDate, reason });
+  }
+
+  decideRequest(requestId: string, decision: 'approve' | 'reject', comment: string | null, approvedDueDate?: string | null): Observable<ApprovalRequest[]> {
+    return this.http.post<ApprovalRequest[]>(`/api/v1/requests/${requestId}/${decision}`, { comment, approvedDueDate: approvedDueDate || null });
+  }
+
+  withdrawRequest(requestId: string): Observable<ApprovalRequest[]> {
+    return this.http.post<ApprovalRequest[]>(`/api/v1/requests/${requestId}/withdraw`, {});
+  }
+
+  /** The caller's approval queue. */
+  requestQueue(status: ApprovalRequestStatus = 'Pending'): Observable<ApprovalRequest[]> {
+    return this.http.get<ApprovalRequest[]>('/api/v1/requests', { params: toParams({ status }) });
+  }
+
+  delays(id: string): Observable<DelayReport[]> {
+    return this.http.get<DelayReport[]>(`/api/v1/tasks/${id}/delay-reports`);
+  }
+
+  reportDelay(id: string, category: DelayCategory, description: string): Observable<DelayReport[]> {
+    return this.http.post<DelayReport[]>(`/api/v1/tasks/${id}/delay-reports`, { category, description });
   }
 
   history(id: string): Observable<TaskHistoryEntry[]> {

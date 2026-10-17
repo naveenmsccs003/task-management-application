@@ -66,6 +66,12 @@ public static class DependencyInjection
             services.AddHostedService(sp => sp.GetRequiredService<CleanupWorker>());
         }
 
+        services.AddSingleton<DueDateWorker>();
+        if (configuration.GetValue("Jobs:DueDatesEnabled", true))
+        {
+            services.AddHostedService(sp => sp.GetRequiredService<DueDateWorker>());
+        }
+
         services.AddSingleton<SessionMonitorWorker>();
         if (configuration.GetValue("Jobs:SessionMonitorEnabled", true))
         {

@@ -37,6 +37,15 @@ public static class PermissionCatalog
     public const string TimeView = "time.view";
     public const string TimeAdjust = "time.adjust";
     public const string NotificationsView = "notifications.view";
+    public const string TasksSubmit = "tasks.submit";
+    public const string TasksReview = "tasks.review";
+    public const string TasksClose = "tasks.close";
+    public const string TasksReopen = "tasks.reopen";
+    public const string DeadlinesRequest = "deadlines.request";
+    public const string DeadlinesApprove = "deadlines.approve";
+    public const string ReassignmentsApprove = "reassignments.approve";
+    public const string DelaysReport = "delays.report";
+    public const string DelaysView = "delays.view";
     public const string SystemHealth = "system.health";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
@@ -92,10 +101,10 @@ public static class PermissionCatalog
         new(TasksDeleteDraft, "Tasks", "Delete a draft task without history", null, P, P, null, null),
         new(TasksComment, "Tasks", "Add comments", null, P, P, O, null),
         new(TasksWork, "Tasks", "Start, pause, resume and stop own work", null, O, null, O, null),
-        new("tasks.submit", "Tasks", "Submit own task for review", null, O, null, O, null),
-        new("tasks.review", "Tasks", "Approve review or request revision", null, P, null, null, null),
-        new("tasks.close", "Tasks", "Close a task after TL approval", null, P, P, null, null),
-        new("tasks.reopen", "Tasks", "Reopen a closed task", null, P, P, null, null),
+        new(TasksSubmit, "Tasks", "Submit own task for review", null, O, null, O, null),
+        new(TasksReview, "Tasks", "Approve review or request revision", null, P, null, null, null),
+        new(TasksClose, "Tasks", "Close a task after TL approval", null, P, P, null, null),
+        new(TasksReopen, "Tasks", "Reopen a closed task", null, P, P, null, null),
 
         // Algorithm, checklist
         new(AlgorithmsView, "Algorithms", "View algorithm submissions", G, P, P, O, P),
@@ -110,11 +119,11 @@ public static class PermissionCatalog
         new(TimeAdjust, "Time", "Add time adjustments with a reason", null, P, P, null, null),
 
         // Requests
-        new("deadlines.request", "Requests", "Request a deadline extension", null, P, P, O, null),
-        new("deadlines.approve", "Requests", "Approve or reject deadline extensions", G, P, P, null, null),
-        new("reassignments.approve", "Requests", "Approve or reject reassignments", G, P, P, null, null),
-        new("delays.report", "Requests", "File a delay report", null, O, null, O, null),
-        new("delays.view", "Requests", "View delay reports", G, P, P, O, null),
+        new(DeadlinesRequest, "Requests", "Request a deadline extension", null, P, P, O, null),
+        new(DeadlinesApprove, "Requests", "Approve or reject deadline extensions", G, P, P, null, null),
+        new(ReassignmentsApprove, "Requests", "Approve or reject reassignments", G, P, P, null, null),
+        new(DelaysReport, "Requests", "File a delay report", null, O, null, O, null),
+        new(DelaysView, "Requests", "View delay reports", G, P, P, O, null),
 
         // Attachments (viewing follows the parent record's permission)
         new("attachments.upload", "Attachments", "Upload attachments", null, P, P, O, null),

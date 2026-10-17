@@ -108,6 +108,7 @@ api.MapProjectEndpoints();
 api.MapTaskEndpoints();
 api.MapWorkEndpoints();
 api.MapNotificationEndpoints();
+api.MapReviewEndpoints();
 app.MapHub<NotificationHub>(NotificationHub.Path);
 
 await app.RunAsync();

@@ -31,6 +31,9 @@ import { formatClock } from '../time-format';
           @if (auth.hasPermission('roles.view')) {
             <a mat-button routerLink="/admin/roles" routerLinkActive="active">Roles</a>
           }
+          @if (auth.hasPermission('reassignments.approve', 'Project') || auth.hasPermission('deadlines.approve', 'Project')) {
+            <a mat-button routerLink="/approvals" routerLinkActive="active">Approvals</a>
+          }
           @if (auth.hasPermission('checklists.manage')) {
             <a mat-button routerLink="/checklist-templates" routerLinkActive="active">Checklists</a>
           }

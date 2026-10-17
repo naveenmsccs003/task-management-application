@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using TaskManagement.Domain.Access;
 using TaskManagement.IntegrationTests.Infrastructure;
 using TaskManagement.IntegrationTests.Projects;
@@ -253,9 +254,11 @@ public sealed class TaskTests(ApiFactory factory)
             ["update", "assign", "cancel", "delete", "comment", "manageChecklist", "adjustTime"],
             Actions(await scenario.Pm.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(draft)}")));
         Assert.Equal(
-            ["update", "cancel", "comment", "manageChecklist", "adjustTime"],
+            ["update", "cancel", "comment", "manageChecklist", "adjustTime", "requestReassignment", "requestExtension"],
             Actions(await scenario.Tl.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
-        Assert.Equal(["comment", "start", "completeChecklist"], Actions(await scenario.Dev.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
+        Assert.Equal(
+            ["comment", "start", "completeChecklist", "requestExtension", "reportDelay"],
+            Actions(await scenario.Dev.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
         Assert.Empty(Actions(await scenario.Viewer.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
     }
 
@@ -295,6 +298,7 @@ public sealed class TaskTests(ApiFactory factory)
         var critical = await scenario.CreateTaskAsync("Fix payment crash", new { priority = "Critical", type = "Bug" });
         var overdue = await scenario.CreateAssignedTaskAsync(scenario.DevMember.Id, "Overdue report", new { dueDate = yesterday, priority = "Low" });
         await scenario.CreateTaskAsync("Write docs", new { priority = "High" });
+        await factory.Services.GetRequiredService<TaskManagement.Infrastructure.Jobs.DueDateWorker>().RunOnceAsync(TestContext.Current.CancellationToken);
         var basePath = $"/api/v1/tasks?projectId={scenario.ProjectId}";
 
         var byPriority = await scenario.Pm.GetJsonAsync<JsonElement>($"{basePath}&sort=-priority&pageSize=2");

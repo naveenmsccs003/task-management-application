@@ -6,7 +6,7 @@ namespace TaskManagement.Application.Tasks;
 public sealed record UserRef(Guid Id, string Name);
 
 /// <summary>Flags shown next to the state (task-workflow.md §1). More flags arrive with later phases.</summary>
-public sealed record TaskFlagsDto(bool Overdue, bool OverAllocated);
+public sealed record TaskFlagsDto(bool Overdue, bool OverAllocated, bool ExtensionPending, bool ReassignmentPending);
 
 /// <summary>Checklist progress shown on the task (FR-CHK-05 needs every mandatory item done before review).</summary>
 public sealed record ChecklistSummaryDto(int Total, int Done, int MandatoryTotal, int MandatoryDone);
@@ -34,6 +34,7 @@ public sealed record TaskDto(
     bool AlgorithmApproved,
     IReadOnlyList<string> Labels,
     int CurrentRevision,
+    int? ApprovedRevision,
     TaskFlagsDto Flags,
     ChecklistSummaryDto Checklist,
     string? CancelReason,
@@ -43,6 +44,7 @@ public sealed record TaskDto(
     IReadOnlyList<string> AllowedActions,
     bool CanViewAlgorithm,
     bool CanViewTime,
+    bool CanViewDelays,
     uint Version);
 
 public sealed record TaskListItemDto(
