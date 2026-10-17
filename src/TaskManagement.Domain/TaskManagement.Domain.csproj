@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Business rules only. Must not reference any other project or framework package (see architecture tests). -->
+</Project>

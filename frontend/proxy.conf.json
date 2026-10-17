@@ -1,0 +1,6 @@
+{
+  "/api": { "target": "http://localhost:5080", "secure": false },
+  "/hubs": { "target": "http://localhost:5080", "secure": false, "ws": true },
+  "/health": { "target": "http://localhost:5080", "secure": false },
+  "/openapi": { "target": "http://localhost:5080", "secure": false }
+}

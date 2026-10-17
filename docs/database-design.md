@@ -1,9 +1,9 @@
 # Database Design
 
-Status: **Phase 2 draft — awaiting approval**
+Status: **Approved (Phase 2, 2026-10-17)** — kept up to date as phases are implemented
 Last updated: 2026-10-17
 
-PostgreSQL 17, accessed through EF Core 10 with Npgsql. All schema changes are EF Core migrations (NFR-MNT-02).
+PostgreSQL 18, accessed through EF Core 10 with Npgsql. EF Core's migration history is kept in `ops.__ef_migrations_history`. All schema changes are EF Core migrations (NFR-MNT-02).
 
 ## 1. Conventions
 
@@ -306,6 +306,7 @@ Indexes: (occurred_at); (entity_type, entity_id); (actor_id, occurred_at); (proj
 - Applied in test/production by an **EF Core migration bundle** run as a deployment step with `tma_migrator` — **never** automatically at app startup in production (avoids races between instances and keeps the app user without DDL rights).
 - Development: applied automatically on startup for convenience.
 - Seed data (permissions, system roles, default settings) applied by an idempotent seeder at startup — inserts missing rows, never overwrites Admin changes.
+- Database and roles: `deploy/db/create-roles.sql` (Phase 3) creates `tma_migrator`, `tma_app` and default privileges, so every table the migrator creates is usable — but not alterable — by the app.
 - First Admin: `dotnet TaskManagement.Api.dll create-admin --email ...` command sends an invite link (FR-ADM-03).
 
 ## 7. Backups and retention

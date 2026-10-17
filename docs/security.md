@@ -1,6 +1,6 @@
 # Security Design
 
-Status: **Phase 2 draft — awaiting approval**
+Status: **Approved (Phase 2, 2026-10-17)** — kept up to date as phases are implemented
 Last updated: 2026-10-17
 
 Target baseline: OWASP ASVS 5.0 Level 2 (NFR-SEC-01). This document lists the threats we design against and the control for each.

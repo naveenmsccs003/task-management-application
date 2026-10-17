@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 2 draft — awaiting approval**
+Status: **Approved (Phase 2, 2026-10-17)** — kept up to date as phases are implemented
 Last updated: 2026-10-17
 
 This document explains how the application is structured and why. It implements the requirements in [requirements.md](requirements.md).
@@ -34,15 +34,16 @@ Checked on 2026-10-17 against nuget.org, npmjs.com and Microsoft's .NET release 
 | EF Core | 10.0.x | Same major as .NET. |
 | Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.x | Matches EF Core 10. |
 | EFCore.NamingConventions | 10.0.x | snake_case table/column names. Depends on EF Core `[10.0.1, 11.0.0)` — compatible. |
-| PostgreSQL | 17 (18 acceptable) | Any supported major ≥ 16. |
-| Angular / Angular Material | 22.2.x | Requires Node `^22.22.3 \|\| ^24.15.0 \|\| >=26`. **The development machine has Node 22.22.1, which must be upgraded** (see known-issues). |
+| PostgreSQL | 18 | Ubuntu 26.04 ships 18; CI uses `postgres:18-alpine`. |
+| Angular / Angular Material | 22.2.x | Requires Node `^22.22.3 \|\| ^24.15.0 \|\| >=26`. The project pins Node 24.22.0 LTS in `frontend/.nvmrc`. |
 | Angular unit tests | Vitest (Angular's default runner) | |
 | End-to-end tests | Playwright 1.6x | |
-| Backend tests | xUnit v3, Testcontainers.PostgreSql 4.x, Microsoft.AspNetCore.Mvc.Testing 10 | |
+| Backend tests | xUnit v3 4.x on Microsoft.Testing.Platform, Testcontainers.PostgreSql 4.x, Microsoft.AspNetCore.Mvc.Testing 10 | `global.json` selects the Microsoft.Testing.Platform runner for `dotnet test`. |
 | Email | MailKit 4.x | |
 | S3-compatible storage | AWSSDK.S3 4.x | Production option. |
 | MFA (TOTP) | ASP.NET Core Identity built-in authenticator support | No extra package. |
-| Telemetry | OpenTelemetry .NET 1.x | |
+| Telemetry | OpenTelemetry .NET 1.x | Added when observability is wired up (Phase 12). |
+| Fonts | `@fontsource/roboto` (self-hosted) | No requests to Google Fonts, so the CSP can stay `'self'`. Icons will be SVGs, not an icon font. |
 
 **Libraries deliberately not used:**
 
@@ -66,11 +67,12 @@ src/
                                   hosting of background jobs
 tests/
   TaskManagement.Domain.Tests/        Unit tests: workflow state machine, rules
-  TaskManagement.Application.Tests/   Unit tests: handlers with in-memory fakes where useful
+  TaskManagement.Application.Tests/   Unit tests: handlers with in-memory fakes where useful (created with the first handlers, Phase 4)
   TaskManagement.IntegrationTests/    API + real PostgreSQL (Testcontainers): authorization, workflows, migrations
   TaskManagement.ArchitectureTests/   Enforce layer and module dependency rules
-frontend/                           Angular workspace (see §6)
-e2e/                                Playwright tests
+frontend/                           Angular workspace (see §7)
+e2e/                                Playwright tests (created in Phase 4)
+deploy/db/                          Database role/grant script
 docs/
 ```
 

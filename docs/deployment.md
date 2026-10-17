@@ -1,6 +1,6 @@
 # Deployment
 
-Status: **Phase 2 outline — details added as the application is built**
+Status: **Phase 3 — local development documented; test/production details added in later phases**
 Last updated: 2026-10-17
 
 ## 1. Environments
@@ -9,7 +9,7 @@ Last updated: 2026-10-17
 |---|---|---|---|
 | Purpose | Local coding | Shared QA, end-to-end tests, security scans | Real users |
 | `ASPNETCORE_ENVIRONMENT` | Development | Testing | Production |
-| Database | Local PostgreSQL in Docker | Dedicated PostgreSQL | Managed/HA PostgreSQL with PITR backups |
+| Database | Local PostgreSQL 18 (Docker Compose or installed) | Dedicated PostgreSQL | Managed/HA PostgreSQL with PITR backups |
 | Migrations | Auto-applied at startup | Migration bundle in CI/CD | Migration bundle in CI/CD (approval step) |
 | Email | Mailpit (catches all mail) | Mailpit or a sandbox SMTP | Real SMTP provider |
 | File storage | Local folder outside the repo | S3-compatible bucket (e.g. MinIO) | Private S3-compatible / Azure Blob bucket |
@@ -21,14 +21,33 @@ Last updated: 2026-10-17
 
 ## 2. Local development prerequisites
 
-| Tool | Version | Status on current machine (2026-10-17) |
+| Tool | Version | Notes |
 |---|---|---|
-| .NET SDK | 10.0.x | **Not installed** |
-| Node.js | ≥ 22.22.3 (or 24.15+) | **22.22.1 installed — upgrade needed** |
-| Docker + Compose | Recent | **Not installed** |
-| Git | any recent | 2.53.0 installed |
+| .NET SDK | 10.0.401 (pinned in `global.json`, newer 10.0.x feature bands allowed) | |
+| Node.js | 24.22.0 LTS (`frontend/.nvmrc`); Angular 22 accepts `^22.22.3 \|\| ^24.15.0 \|\| >=26` | |
+| PostgreSQL | 18 | Via `compose.yaml` or a local install |
+| Docker + Compose | Recent | Optional locally; needed for `compose.yaml` and Testcontainers |
 
-A `compose.yaml` (Phase 3) will start PostgreSQL, Mailpit, MinIO and ClamAV for development.
+`compose.yaml` starts PostgreSQL 18 and Mailpit. MinIO and ClamAV are added with the attachments phase.
+
+### Running locally
+
+```bash
+cp .env.example .env                 # then set POSTGRES_PASSWORD
+docker compose up -d                 # or use your own PostgreSQL 18
+
+# API (http://localhost:5080). The connection string is a secret: keep it out of the repo.
+dotnet user-secrets --project src/TaskManagement.Api set "ConnectionStrings:Default" \
+  "Host=localhost;Port=5432;Database=tma;Username=postgres;Password=<from .env>"
+dotnet run --project src/TaskManagement.Api      # Development: applies migrations on startup
+
+# Angular (http://localhost:4200, proxies /api, /hubs, /health, /openapi to the API)
+cd frontend && npm ci && npm start
+```
+
+OpenAPI document (Development/Testing only): `http://localhost:5080/openapi/v1.json`.
+
+`npm` 11 blocks package install scripts unless approved. The four Angular build-tool packages that have them (`esbuild`, `lmdb`, `@parcel/watcher`, `msgpackr-extract`) are denied in `frontend/package.json` → `allowScripts`; their prebuilt binaries work without the scripts (verified by build and tests).
 
 ## 3. Production topology
 
@@ -57,9 +76,9 @@ flowchart LR
 
 ## 5. First-time setup (production)
 
-1. Create database, roles `tma_migrator`, `tma_app` and grants (script in Phase 3).
+1. Create database, roles and grants: `psql -h <host> -U postgres -v migrator_password=... -v app_password=... -f deploy/db/create-roles.sql`.
 2. Configure secrets.
-3. Run migration bundle.
+3. Run migration bundle as `tma_migrator`; the app connects as `tma_app`.
 4. Run `create-admin` command to send the first Admin invite.
 
 ## 6. Backups

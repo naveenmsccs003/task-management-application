@@ -1,0 +1,36 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.trx
+coverage*/
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+e2e/test-results/
+e2e/playwright-report/
+
+# Secrets and local config — never commit
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+*.pfx
+*.pem
+*.key
+keys/
+
+# Local data
+storage/
+*.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

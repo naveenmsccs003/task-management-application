@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Status: **Phase 2 draft — awaiting approval**
+Status: **Approved (Phase 2, 2026-10-17)** — kept up to date as phases are implemented
 Last updated: 2026-10-17
 
 ## 1. Principles
@@ -49,12 +49,22 @@ Last updated: 2026-10-17
 
 ## 5. Running tests
 
-Commands will be filled in during Phase 3 when projects exist. Planned:
-
 ```bash
-dotnet test                       # all backend tests (Docker required for integration tests)
-cd frontend && npm test           # Angular unit tests
-cd e2e && npx playwright test     # end-to-end (requires running stack)
+# Backend: all unit, architecture and integration tests
+dotnet test --solution TaskManagement.slnx
+
+# Integration tests need PostgreSQL. Either:
+#  - have Docker running (Testcontainers starts postgres:18-alpine automatically), or
+#  - point at an existing server where the user may CREATE DATABASE; each test fixture creates and drops its own database:
+export TMA_TEST_POSTGRES="Host=127.0.0.1;Port=5432;Username=postgres;Password=...;Database=postgres"
+
+# Frontend
+cd frontend
+npm run lint
+npx ng test --watch=false
+
+# End-to-end (from Phase 4)
+cd e2e && npx playwright test
 ```
 
 ## 6. CI quality gates (GitHub Actions)
@@ -76,3 +86,4 @@ End-to-end tests run on the main branch and before releases.
 |---|---|---|
 | 1 | None (documentation only) | — |
 | 2 | None (documentation only) | — |
+| 3 | Backend: 34 tests (Domain 10, Architecture 14, Integration 10) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`. Frontend: 11 Vitest tests. Lint, format, build, migration check, vulnerability scans. | All passed locally (2026-10-17). The Testcontainers path and GitHub Actions were not run locally (no Docker) — first run is on GitHub after push. |

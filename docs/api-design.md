@@ -1,6 +1,6 @@
 # API Design
 
-Status: **Phase 2 draft — awaiting approval**
+Status: **Approved (Phase 2, 2026-10-17)** — kept up to date as phases are implemented
 Last updated: 2026-10-17
 
 REST-style JSON API built with ASP.NET Core Minimal APIs, documented with OpenAPI (`/openapi/v1.json`, development and test environments).
@@ -34,7 +34,7 @@ Every endpoint declares its required permission. For record endpoints the order 
 
 ```json
 {
-  "type": "https://errors.tma.local/task/invalid-transition",
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
   "title": "This action is not allowed in the task's current state.",
   "status": 409,
   "code": "task.invalid_transition",
@@ -44,7 +44,7 @@ Every endpoint declares its required permission. For record endpoints the order 
 }
 ```
 
-- `code` is stable and used by Angular to show messages; `title`/`detail` are human-readable.
+- `type` is the standard link for the HTTP status (set by ASP.NET Core). `code` is the stable application error code used by Angular; `title`/`detail` are human-readable.
 - `errors` (validation only) maps field names to messages.
 - In production, unexpected errors return a generic 500 with only `title`, `status` and `traceId`.
 
@@ -213,6 +213,7 @@ Downloads of files with scan status other than `Clean` return 409 (`attachment.n
 | GET | `/projects/{id}/audit-logs` | `audit.view-project` |
 | GET | `/admin/system-status` | `system.health` — jobs, email queue, integrations |
 | GET | `/health/live` · `/health/ready` | anonymous, minimal body |
+| GET | `/system/info` | anonymous — `{ name, version, serverTimeUtc }` (implemented in Phase 3) |
 
 ## 5. Main DTO shapes
 
