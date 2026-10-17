@@ -10,20 +10,24 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
+import { ActiveSessionService } from '../../core/work/active-session.service';
 import { ProjectsApi } from '../projects/projects.api';
 import { ProjectMember } from '../projects/projects.models';
+import { TaskAlgorithm } from './task-algorithm';
+import { TaskChecklist } from './task-checklist';
 import { TaskComments } from './task-comments';
-import { TasksApi } from './tasks.api';
-import { describeHistory, formatAllocation, Task, TASK_STATUS_LABELS, TaskActionName, TaskHistoryEntry } from './tasks.models';
+import { TaskTimePanel } from './task-time';
+import { TasksApi, WorkAction } from './tasks.api';
+import { describeHistory, formatAllocation, formatDuration, Task, TASK_STATUS_LABELS, TaskActionName, TaskHistoryEntry } from './tasks.models';
 
-type Panel = 'assign' | 'cancel' | 'delete' | null;
+type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
 
 /** One task: its fields, the actions the server allows for the caller, comments and history. */
 @Component({
   selector: 'app-task-detail',
   imports: [
     DatePipe, FormsModule, RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, TaskComments,
+    MatSelectModule, TaskAlgorithm, TaskChecklist, TaskComments, TaskTimePanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -42,6 +46,23 @@ type Panel = 'assign' | 'cancel' | 'delete' | null;
       </div>
       @if (t.projectReadOnly) {
         <p class="notice">The project is completed or archived, so this task is read-only.</p>
+      }
+
+      @if (hasWorkActions()) {
+        <div class="actions work" aria-label="Work">
+          @if (can('start')) {
+            <button mat-flat-button type="button" (click)="work('start')" [disabled]="busy()">Start work</button>
+          }
+          @if (can('resume')) {
+            <button mat-flat-button type="button" (click)="work('resume')" [disabled]="busy()">Resume</button>
+          }
+          @if (can('pause')) {
+            <button mat-stroked-button type="button" (click)="openPanel('pause')" [disabled]="busy()">Pause</button>
+          }
+          @if (can('stop')) {
+            <button mat-stroked-button type="button" (click)="openPanel('stop')" [disabled]="busy()">Stop</button>
+          }
+        </div>
       }
 
       <div class="actions">
@@ -102,6 +123,34 @@ type Panel = 'assign' | 'cancel' | 'delete' | null;
             </mat-card-content>
           </mat-card>
         }
+        @case ('pause') {
+          <mat-card appearance="outlined" class="panel">
+            <mat-card-content>
+              <form (ngSubmit)="work('pause', workReason)" aria-label="Pause work">
+                <mat-form-field class="full">
+                  <mat-label>Reason for the pause (optional unless your admin requires it)</mat-label>
+                  <input matInput name="pauseReason" [(ngModel)]="workReason" maxlength="1000" />
+                </mat-form-field>
+                <button mat-flat-button type="submit" [disabled]="busy()">Pause work</button>
+                <button mat-button type="button" (click)="panel.set(null)">Keep working</button>
+              </form>
+            </mat-card-content>
+          </mat-card>
+        }
+        @case ('stop') {
+          <mat-card appearance="outlined" class="panel">
+            <mat-card-content>
+              <form (ngSubmit)="work('stop', workReason)" aria-label="Stop work">
+                <mat-form-field class="full">
+                  <mat-label>Why are you stopping? (e.g. end of day, blocked)</mat-label>
+                  <input matInput name="stopReason" [(ngModel)]="workReason" required maxlength="1000" />
+                </mat-form-field>
+                <button mat-flat-button type="submit" [disabled]="busy() || !workReason.trim()">Stop work</button>
+                <button mat-button type="button" (click)="panel.set(null)">Keep working</button>
+              </form>
+            </mat-card-content>
+          </mat-card>
+        }
         @case ('delete') {
           <mat-card appearance="outlined" class="panel" role="alertdialog" aria-labelledby="delete-text">
             <mat-card-content>
@@ -131,6 +180,17 @@ type Panel = 'assign' | 'cancel' | 'delete' | null;
             <dd>{{ t.startDate ? (t.startDate | date: 'mediumDate') : 'Not set' }}</dd>
             <dt>Allocated</dt>
             <dd>{{ allocation(t.allocatedMinutes) }}</dd>
+            <dt>Spent</dt>
+            <dd [class.overrun]="t.flags.overAllocated">
+              {{ duration(t.spentSeconds) }}
+              @if (t.flags.overAllocated) {
+                (over the allocation)
+              }
+            </dd>
+            @if (t.checklist.total) {
+              <dt>Checklist</dt>
+              <dd>{{ t.checklist.mandatoryDone }}/{{ t.checklist.mandatoryTotal }} required, {{ t.checklist.done }}/{{ t.checklist.total }} in total</dd>
+            }
             <dt>Algorithm</dt>
             <dd>{{ t.algorithmRequired ? 'Required' : 'Not required' }}</dd>
             <dt>Revision</dt>
@@ -152,6 +212,24 @@ type Panel = 'assign' | 'cancel' | 'delete' | null;
           }
         </mat-card-content>
       </mat-card>
+
+      <section class="columns">
+        @if (t.algorithmRequired && t.canViewAlgorithm && t.status !== 'Draft') {
+          <div>
+            <app-task-algorithm [task]="t" (changed)="apply($event)" />
+          </div>
+        }
+        @if (t.status !== 'Draft' || t.checklist.total || can('manageChecklist')) {
+          <div>
+            <app-task-checklist [task]="t" (changed)="reloadTask()" />
+          </div>
+        }
+        @if (t.canViewTime && t.status !== 'Draft') {
+          <div class="wide">
+            <app-task-time [task]="t" />
+          </div>
+        }
+      </section>
 
       <section class="columns">
         <div>
@@ -231,6 +309,15 @@ type Panel = 'assign' | 'cancel' | 'delete' | null;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 24px;
     }
+    .columns .wide {
+      grid-column: 1 / -1;
+    }
+    .actions.work {
+      padding: 8px 0;
+    }
+    .overrun {
+      color: var(--mat-sys-error);
+    }
     .history {
       padding-left: 16px;
     }
@@ -251,6 +338,7 @@ export class TaskDetail implements OnInit {
   private readonly projectsApi = inject(ProjectsApi);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly activeSession = inject(ActiveSessionService);
 
   /** Route parameter. */
   readonly id = input.required<string>();
@@ -263,6 +351,10 @@ export class TaskDetail implements OnInit {
   protected readonly busy = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly assignable = computed(() => this.members().filter((m) => m.isActive && m.canWorkOnTasks));
+  protected readonly hasWorkActions = computed(() =>
+    (['start', 'resume', 'pause', 'stop'] as TaskActionName[]).some((a) => this.task()?.allowedActions.includes(a)),
+  );
+  protected workReason = '';
   protected assigneeId = '';
   protected assignDueDate = '';
   protected cancelReason = '';
@@ -276,6 +368,32 @@ export class TaskDetail implements OnInit {
 
   protected can(action: TaskActionName): boolean {
     return this.task()?.allowedActions.includes(action) ?? false;
+  }
+
+  protected duration(seconds: number): string {
+    return formatDuration(seconds);
+  }
+
+  /** Start, resume, pause or stop; then the timer bar and history are refreshed. */
+  protected async work(action: WorkAction, reason?: string): Promise<void> {
+    await this.run(async () => {
+      const withReason = action === 'pause' || action === 'stop';
+      this.task.set(await firstValueFrom(this.tasksApi.work(this.id(), action, withReason ? (reason ?? '').trim() : undefined)));
+      this.panel.set(null);
+      this.workReason = '';
+      await this.loadHistory();
+    });
+    await this.activeSession.refresh();
+  }
+
+  /** A section changed the task (e.g. algorithm submitted or approved). */
+  protected async apply(task: Task): Promise<void> {
+    this.task.set(task);
+    await this.loadHistory();
+  }
+
+  protected async reloadTask(): Promise<void> {
+    await this.run(async () => this.task.set(await firstValueFrom(this.tasksApi.get(this.id()))));
   }
 
   protected allocation(minutes: number | null): string {
@@ -308,6 +426,7 @@ export class TaskDetail implements OnInit {
       this.panel.set(null);
       await this.loadHistory();
     });
+    await this.activeSession.refresh();
   }
 
   protected async deleteTask(): Promise<void> {

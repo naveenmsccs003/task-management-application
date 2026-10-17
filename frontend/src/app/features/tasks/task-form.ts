@@ -11,6 +11,8 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
 import { applyServerErrors, controlError } from '../../core/api/form-errors';
+import { ChecklistsApi } from '../checklists/checklists.api';
+import { ChecklistTemplate } from '../checklists/checklists.models';
 import { ProjectsApi } from '../projects/projects.api';
 import { Project } from '../projects/projects.models';
 import { TasksApi } from './tasks.api';
@@ -93,6 +95,21 @@ import { SaveTask, Task, TASK_PRIORITIES, TASK_TYPES } from './tasks.models';
             <mat-hint>Separate with commas, e.g. backend, login</mat-hint>
             <mat-error>{{ error('labels', 'Labels') }}</mat-error>
           </mat-form-field>
+          @if (!task()) {
+            <mat-form-field>
+              <mat-label>Checklist</mat-label>
+              <mat-select formControlName="checklistTemplateId">
+                <mat-option value="">None</mat-option>
+                @for (t of templates(); track t.id) {
+                  @if (t.isActive) {
+                    <mat-option [value]="t.id">{{ t.name }}{{ t.projectId ? '' : ' (global)' }}</mat-option>
+                  }
+                }
+              </mat-select>
+              <mat-hint>The template's items are copied to the task.</mat-hint>
+              <mat-error>{{ error('checklistTemplateId', 'Checklist') }}</mat-error>
+            </mat-form-field>
+          }
           <mat-checkbox formControlName="algorithmRequired">An approved algorithm is required before work starts</mat-checkbox>
           @if (failure(); as message) {
             <p class="error" role="alert">{{ message }}</p>
@@ -129,6 +146,7 @@ import { SaveTask, Task, TASK_PRIORITIES, TASK_TYPES } from './tasks.models';
 export class TaskForm implements OnInit {
   private readonly tasksApi = inject(TasksApi);
   private readonly projectsApi = inject(ProjectsApi);
+  private readonly checklistsApi = inject(ChecklistsApi);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -140,6 +158,7 @@ export class TaskForm implements OnInit {
   protected readonly priorities = TASK_PRIORITIES;
   protected readonly project = signal<Project | null>(null);
   protected readonly task = signal<Task | null>(null);
+  protected readonly templates = signal<ChecklistTemplate[]>([]);
   protected readonly busy = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly form = inject(NonNullableFormBuilder).group({
@@ -152,6 +171,7 @@ export class TaskForm implements OnInit {
     allocatedHours: [null as number | null, [Validators.min(0), Validators.max(10000)]],
     labels: [''],
     algorithmRequired: [false],
+    checklistTemplateId: [''],
   });
 
   async ngOnInit(): Promise<void> {
@@ -163,6 +183,8 @@ export class TaskForm implements OnInit {
         const project = await firstValueFrom(this.projectsApi.get(this.projectId()!));
         this.project.set(project);
         this.form.controls.algorithmRequired.setValue(project.algorithmRequiredDefault);
+        this.templates.set(await firstValueFrom(this.checklistsApi.list(project.id)));
+        this.form.controls.checklistTemplateId.setValue(project.defaultChecklistTemplateId ?? '');
       }
     } catch (error) {
       this.failure.set(asApiError(error).message);
@@ -189,6 +211,7 @@ export class TaskForm implements OnInit {
       allocatedMinutes: value.allocatedHours ? Math.round(value.allocatedHours * 60) : null,
       algorithmRequired: value.algorithmRequired,
       labels: value.labels.split(',').map((l) => l.trim()).filter((l) => l),
+      checklistTemplateId: value.checklistTemplateId || null,
     };
     this.busy.set(true);
     this.failure.set(null);

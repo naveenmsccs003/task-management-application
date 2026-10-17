@@ -14,6 +14,7 @@ public sealed record ProjectDto(
     DateOnly? TargetEndDate,
     bool AlgorithmRequiredDefault,
     bool CloseOnApproval,
+    Guid? DefaultChecklistTemplateId,
     int MemberCount,
     int OpenTaskCount,
     RoleRef? MyRole,
@@ -42,7 +43,8 @@ public sealed record SaveProjectCommand(
     DateOnly? TargetEndDate,
     bool AlgorithmRequiredDefault,
     bool CloseOnApproval,
-    uint Version);
+    uint Version,
+    Guid? DefaultChecklistTemplateId = null);
 
 /// <summary>Completing or archiving a project with open tasks needs <see cref="ConfirmOpenTasks"/> (FR-PROJ-04).</summary>
 public sealed record ProjectStatusCommand(bool ConfirmOpenTasks);

@@ -2,11 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
+using TaskManagement.Domain.Checklists;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
+using TaskManagement.Domain.Operations;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Settings;
 using TaskManagement.Domain.Tasks;
+using TaskManagement.Domain.Time;
 
 namespace TaskManagement.Application.Common;
 
@@ -44,9 +47,27 @@ public interface IAppDbContext
 
     DbSet<TaskCommentEdit> TaskCommentEdits { get; }
 
+    DbSet<AlgorithmSubmission> AlgorithmSubmissions { get; }
+
+    DbSet<ChecklistTemplate> ChecklistTemplates { get; }
+
+    DbSet<TaskChecklistItem> TaskChecklistItems { get; }
+
+    DbSet<WorkSession> WorkSessions { get; }
+
+    DbSet<TimeAdjustment> TimeAdjustments { get; }
+
+    DbSet<IdempotencyRecord> IdempotencyRecords { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
+
+    /// <summary>True when the save failed on a unique index (e.g. a second active work session, FR-TIME-03).</summary>
+    bool IsUniqueViolation(DbUpdateException exception);
+
+    /// <summary>Forgets all pending changes, so a failed save does not leak into a later one in the same request.</summary>
+    void DiscardChanges();
 
     /// <summary>
     /// Returns the project's next task number. The counter row stays locked until the surrounding transaction ends,

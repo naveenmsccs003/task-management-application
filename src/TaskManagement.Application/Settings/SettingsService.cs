@@ -8,7 +8,7 @@ using TaskManagement.Domain.Settings;
 
 namespace TaskManagement.Application.Settings;
 
-public sealed record SettingsDto(AuthSettings Auth);
+public sealed record SettingsDto(AuthSettings Auth, WorkSettings Work);
 
 /// <summary>
 /// Typed, cached access to global settings. Values are read at the moment they are used (e.g. during sign-in),
@@ -27,7 +27,49 @@ public sealed class SettingsService(IAppDbContext db, IMemoryCache cache, IAudit
             return row is null ? new AuthSettings() : JsonSerializer.Deserialize<AuthSettings>(row.ValueJson, JsonOptions) ?? new AuthSettings();
         }) ?? new AuthSettings();
 
-    public async Task<SettingsDto> GetAllAsync(CancellationToken cancellationToken) => new(await GetAuthAsync(cancellationToken));
+    public async Task<WorkSettings> GetWorkAsync(CancellationToken cancellationToken) =>
+        await cache.GetOrCreateAsync(CacheKey(WorkSettings.Key), async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            var row = await db.GlobalSettings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == WorkSettings.Key, cancellationToken);
+            return row is null ? new WorkSettings() : JsonSerializer.Deserialize<WorkSettings>(row.ValueJson, JsonOptions) ?? new WorkSettings();
+        }) ?? new WorkSettings();
+
+    public async Task<SettingsDto> GetAllAsync(CancellationToken cancellationToken) =>
+        new(await GetAuthAsync(cancellationToken), await GetWorkAsync(cancellationToken));
+
+    public async Task<Result<WorkSettings>> UpdateWorkAsync(WorkSettings settings, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var errors = settings.Validate();
+        if (errors.HasErrors)
+        {
+            return errors.ToError();
+        }
+
+        var previous = await GetWorkAsync(cancellationToken);
+        await SaveAsync(WorkSettings.Key, JsonSerializer.Serialize(settings, JsonOptions), cancellationToken);
+        auditLog.Record("settings.updated", "Setting", WorkSettings.Key, new AuditChanges()
+            .Change("maxSessionHours", previous.MaxSessionHours, settings.MaxSessionHours)
+            .Change("pauseReasonRequired", previous.PauseReasonRequired, settings.PauseReasonRequired)
+            .Change("allocationWarningPercent", previous.AllocationWarningPercent, settings.AllocationWarningPercent));
+        await db.SaveChangesAsync(cancellationToken);
+        cache.Remove(CacheKey(WorkSettings.Key));
+        return settings;
+    }
+
+    private async Task SaveAsync(string key, string json, CancellationToken cancellationToken)
+    {
+        var row = await db.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
+        if (row is null)
+        {
+            db.GlobalSettings.Add(new GlobalSetting(key, json, timeProvider.GetUtcNow(), currentUser.UserId));
+        }
+        else
+        {
+            row.Update(json, timeProvider.GetUtcNow(), currentUser.UserId);
+        }
+    }
 
     public async Task<Result<AuthSettings>> UpdateAuthAsync(AuthSettings settings, CancellationToken cancellationToken)
     {

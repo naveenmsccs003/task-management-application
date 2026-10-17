@@ -20,6 +20,7 @@ export interface Project {
   targetEndDate: string | null;
   algorithmRequiredDefault: boolean;
   closeOnApproval: boolean;
+  defaultChecklistTemplateId: string | null;
   memberCount: number;
   openTaskCount: number;
   myRole: RoleRef | null;
@@ -55,6 +56,7 @@ export interface SaveProject {
   targetEndDate: string | null;
   algorithmRequiredDefault: boolean;
   closeOnApproval: boolean;
+  defaultChecklistTemplateId?: string | null;
   version?: number;
 }
 

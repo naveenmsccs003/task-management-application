@@ -6,7 +6,10 @@ namespace TaskManagement.Application.Tasks;
 public sealed record UserRef(Guid Id, string Name);
 
 /// <summary>Flags shown next to the state (task-workflow.md §1). More flags arrive with later phases.</summary>
-public sealed record TaskFlagsDto(bool Overdue);
+public sealed record TaskFlagsDto(bool Overdue, bool OverAllocated);
+
+/// <summary>Checklist progress shown on the task (FR-CHK-05 needs every mandatory item done before review).</summary>
+public sealed record ChecklistSummaryDto(int Total, int Done, int MandatoryTotal, int MandatoryDone);
 
 /// <summary>GET /tasks/{id}. <see cref="AllowedActions"/> is computed with the same rules the server enforces.</summary>
 public sealed record TaskDto(
@@ -26,15 +29,20 @@ public sealed record TaskDto(
     DateOnly? DueDate,
     DateOnly? OriginalDueDate,
     int? AllocatedMinutes,
+    long SpentSeconds,
     bool AlgorithmRequired,
+    bool AlgorithmApproved,
     IReadOnlyList<string> Labels,
     int CurrentRevision,
     TaskFlagsDto Flags,
+    ChecklistSummaryDto Checklist,
     string? CancelReason,
     UserRef CreatedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyList<string> AllowedActions,
+    bool CanViewAlgorithm,
+    bool CanViewTime,
     uint Version);
 
 public sealed record TaskListItemDto(
@@ -79,7 +87,8 @@ public sealed record CreateTaskCommand(
     DateOnly? DueDate,
     int? AllocatedMinutes,
     bool? AlgorithmRequired,
-    IReadOnlyList<string?>? Labels);
+    IReadOnlyList<string?>? Labels,
+    Guid? ChecklistTemplateId = null);
 
 /// <summary>PATCH /tasks/{id}: the full editable field set plus the version that was loaded. Null type, priority or flag keeps the current value.</summary>
 public sealed record UpdateTaskCommand(

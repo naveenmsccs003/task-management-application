@@ -151,6 +151,7 @@ public sealed class ProjectQueries(IAppDbContext db, ICurrentUser currentUser, P
             project.TargetEndDate,
             project.AlgorithmRequiredDefault,
             project.CloseOnApproval,
+            project.DefaultChecklistTemplateId,
             counts.Members,
             counts.OpenTasks,
             myRole,

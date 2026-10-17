@@ -86,7 +86,7 @@ No registration endpoint exists (FR-AUTH-01).
 | POST/PATCH/DELETE | `/roles[/{id}]` | `roles.manage` |
 | PUT | `/roles/{id}/permissions` | `roles.manage` — `[{ code, scope }]` |
 | GET | `/settings` | `settings.manage` — all settings groups |
-| PUT | `/settings/{group}` | `settings.manage` — replaces one validated group, e.g. `/settings/auth` (Phase 4: `auth` only) |
+| PUT | `/settings/{group}` | `settings.manage` — replaces one validated group, e.g. `/settings/auth` (Phase 4: `auth`; Phase 6: `work` — `maxSessionHours` 1–24, `pauseReasonRequired`, `allocationWarningPercent` 50–99) |
 
 ### 4.3 Projects
 
@@ -142,7 +142,9 @@ All `POST /tasks/{id}/…`, return the updated `TaskDto`.
 | `/reopen` | T14 | `{ reason }` | `tasks.reopen` |
 | `/cancel` | T15 | `{ reason }` | `tasks.cancel` |
 
-**Implemented in Phase 5:** `/assign` (body may also carry `dueDate` when the task has none yet, WQ1) and `/cancel`. The other actions arrive with their phases; `allowedActions` lists only implemented actions (`update`, `assign`, `cancel`, `delete`, `comment` so far).
+**Implemented in Phase 5:** `/assign` (body may also carry `dueDate` when the task has none yet, WQ1) and `/cancel`.
+
+**Implemented in Phase 6:** `/algorithm` (T3; `attachmentIds` with the attachments phase), `/algorithm/{submissionId}/approve` · `/reject` (T4/T5), `/start`, `/pause`, `/resume`, `/stop` (T6–T9) and `GET /tasks/{id}/algorithm`. The four work actions accept an `Idempotency-Key` header: the first successful response is stored for 24 hours and replayed for the same key and endpoint; the same key on another endpoint answers 409 `idempotency.key_reused`. Work actions are the assignee's only (403 `work.not_assignee` for anyone else, AC-WORK-4); starting while another task runs answers 409 `work.session_active` naming that task. Starting a task that still needs its algorithm answers 409 `task.algorithm_approval_required` (AC-ALG-1). Approving or rejecting is refused with 403 `algorithm.own_submission` when the reviewer is the task's assignee. `allowedActions` now also lists `start`, `pause`, `resume`, `stop`, `submitAlgorithm`, `reviewAlgorithm`, `completeChecklist`, `manageChecklist` and `adjustTime`; `TaskDto` gains `spentSeconds`, `algorithmApproved`, `checklist` (totals), `flags.overAllocated`, `canViewAlgorithm` and `canViewTime`. Review, close and reopen arrive in Phase 8.
 
 GET `/tasks/{id}/algorithm` lists all submissions (`algorithms.view`).
 
@@ -155,6 +157,8 @@ GET `/tasks/{id}/algorithm` lists all submissions (`algorithms.view`).
 | POST | `/tasks/{id}/checklist` | `checklists.manage-project` — add task-specific item |
 | POST | `/tasks/{id}/checklist/{itemId}/complete` · `/uncomplete` | `checklists.complete` (assignee) — `{ note? }` |
 
+**Implemented in Phase 6.** `GET /checklist-templates` without `projectId` lists global templates (needs `checklists.manage`); with `projectId` it lists the active global templates plus that project's templates (anyone who can see the project, so templates can be picked for tasks). Templates are created with `{ projectId?, name, isActive, items[{ text, isMandatory }] }` and updated (PATCH, with `version`) by replacing the items; there is no delete — deactivate instead. Task create takes an optional `checklistTemplateId` (otherwise the project's `defaultChecklistTemplateId`, a new project field, applies). Items can be added until the task is submitted for review; the assignee ticks items while the task is Ready to start, In progress, Paused, Stopped or Revision requested.
+
 ### 4.7 Time
 
 | Method | Path | Permission |
@@ -163,6 +167,8 @@ GET `/tasks/{id}/algorithm` lists all submissions (`algorithms.view`).
 | GET | `/tasks/{id}/time` | `time.view` — sessions, adjustments, totals per revision |
 | POST | `/tasks/{id}/time-adjustments` | `time.adjust` — `{ userId, minutes, reason }` |
 | GET | `/timesheets?userId=&from=&to=` | `time.view` (own, or project scope) |
+
+**Implemented in Phase 6:** `/me/active-session` (204 when nothing runs; includes `serverTime` so the timer uses the server clock), `/tasks/{id}/time` (totals, overrun, percentage of the allocation, per revision and member, sessions, adjustments) and `/tasks/{id}/time-adjustments` (`minutes` non-zero, at most one week either way; only for someone who worked on or was assigned to the task). Timesheets arrive with reports (Phase 11).
 
 ### 4.8 Requests and delays
 

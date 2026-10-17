@@ -100,6 +100,7 @@ api.MapMemberEndpoints();
 api.MapAdministrationEndpoints();
 api.MapProjectEndpoints();
 api.MapTaskEndpoints();
+api.MapWorkEndpoints();
 
 await app.RunAsync();
 return 0;

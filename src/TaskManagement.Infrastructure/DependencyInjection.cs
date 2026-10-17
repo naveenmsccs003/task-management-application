@@ -5,6 +5,7 @@ using TaskManagement.Application.Common;
 using TaskManagement.Application.Identity;
 using TaskManagement.Infrastructure.Email;
 using TaskManagement.Infrastructure.Identity;
+using TaskManagement.Infrastructure.Jobs;
 using TaskManagement.Infrastructure.Persistence;
 using TaskManagement.Infrastructure.Seeding;
 
@@ -52,6 +53,12 @@ public static class DependencyInjection
         if (configuration.GetValue(EmailOptions.Section + ":BackgroundWorkerEnabled", true))
         {
             services.AddHostedService(sp => sp.GetRequiredService<EmailDeliveryWorker>());
+        }
+
+        services.AddSingleton<SessionMonitorWorker>();
+        if (configuration.GetValue("Jobs:SessionMonitorEnabled", true))
+        {
+            services.AddHostedService(sp => sp.GetRequiredService<SessionMonitorWorker>());
         }
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);

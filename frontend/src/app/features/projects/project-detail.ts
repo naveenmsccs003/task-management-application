@@ -6,6 +6,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
+import { ChecklistTemplates } from '../checklists/checklist-templates';
 import { TaskList } from '../tasks/task-list';
 import { ProjectMembers } from './project-members';
 import { ProjectsApi } from './projects.api';
@@ -14,7 +15,7 @@ import { isReadOnly, Project, projectAllows, PROJECT_STATUS_LABELS, ProjectStatu
 /** One project: details, status actions, its tasks and its members. */
 @Component({
   selector: 'app-project-detail',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatTabsModule, ProjectMembers, TaskList],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatTabsModule, ChecklistTemplates, ProjectMembers, TaskList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a routerLink="/projects">← Projects</a>
@@ -96,6 +97,13 @@ import { isReadOnly, Project, projectAllows, PROJECT_STATUS_LABELS, ProjectStatu
             <app-project-members [project]="p" (changed)="reload()" />
           </div>
         </mat-tab>
+        @if (canManageChecklists()) {
+          <mat-tab label="Checklist templates">
+            <div class="tab">
+              <app-checklist-templates [projectId]="p.id" />
+            </div>
+          </mat-tab>
+        }
       </mat-tab-group>
     }
   `,
@@ -162,6 +170,7 @@ export class ProjectDetail implements OnInit {
   protected readonly pendingConfirmation = signal<{ action: ProjectStatusAction; message: string } | null>(null);
   protected readonly readOnly = computed(() => isReadOnly(this.project()));
   protected readonly canUpdate = computed(() => projectAllows(this.project(), 'projects.update'));
+  protected readonly canManageChecklists = computed(() => projectAllows(this.project(), 'checklists.manage-project'));
   protected readonly canCreateTasks = computed(
     () => this.project()?.status === 'Active' && projectAllows(this.project(), 'tasks.create'),
   );

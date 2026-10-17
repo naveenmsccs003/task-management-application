@@ -2,7 +2,7 @@
 
 A role-based task management application with project and task workflows, algorithm approval, work-session time tracking, checklists, TL review, attachments, deadline and reassignment approvals, GitLab issue import, reports and audit logs.
 
-**Current status: Phases 1–4 approved. Phase 5 — projects, project members, tasks, first assignment, cancel and comments (awaiting approval). MFA for Admins is a separate follow-up step before production. Algorithm approval, checklists and time tracking come in Phase 6.**
+**Current status: Phases 1–5 approved. Phase 6 — algorithm approval, checklists, work sessions (start/pause/resume/stop) and time tracking (awaiting approval). MFA for Admins is a separate follow-up step before production. Notifications come in Phase 7.**
 
 ## Planned technology
 
@@ -40,8 +40,8 @@ Each phase ends with builds, tests, a report, and an approval checkpoint.
 2. **Architecture and design** — approved: module boundaries, database schema, API design, security design, test strategy, deployment outline.
 3. **Foundation** — approved: solution skeleton, Angular app, PostgreSQL + migrations, error handling, logging, OpenAPI, CI pipeline.
 4. **Authentication, members, roles, permissions, settings, audit log base** — approved. MFA follows as a separate step.
-5. **Projects, tasks, assignments, comments** — current phase.
-6. **Algorithm approval, checklists, work sessions, allocated hours.**
+5. **Projects, tasks, assignments, comments** — approved.
+6. **Algorithm approval, checklists, work sessions, allocated hours** — current phase.
 7. **Notifications (in-app, email, background jobs).**
 8. **Review, closure, revisions, reassignment, deadline extensions, delay reports.**
 9. **Attachments (private storage).**

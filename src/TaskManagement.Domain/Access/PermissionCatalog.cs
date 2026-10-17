@@ -28,6 +28,14 @@ public static class PermissionCatalog
     public const string TasksDeleteDraft = "tasks.delete-draft";
     public const string TasksComment = "tasks.comment";
     public const string TasksWork = "tasks.work";
+    public const string AlgorithmsView = "algorithms.view";
+    public const string AlgorithmsSubmit = "algorithms.submit";
+    public const string AlgorithmsApprove = "algorithms.approve";
+    public const string ChecklistsManage = "checklists.manage";
+    public const string ChecklistsManageProject = "checklists.manage-project";
+    public const string ChecklistsComplete = "checklists.complete";
+    public const string TimeView = "time.view";
+    public const string TimeAdjust = "time.adjust";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
     public static IReadOnlyList<string> AdminProtected { get; } = [RolesManage, MembersCreate];
@@ -88,16 +96,16 @@ public static class PermissionCatalog
         new("tasks.reopen", "Tasks", "Reopen a closed task", null, P, P, null, null),
 
         // Algorithm, checklist
-        new("algorithms.view", "Algorithms", "View algorithm submissions", G, P, P, O, P),
-        new("algorithms.submit", "Algorithms", "Submit an algorithm for own task", null, O, null, O, null),
-        new("algorithms.approve", "Algorithms", "Approve or reject algorithms", null, P, null, null, null),
-        new("checklists.manage", "Checklists", "Manage global checklist templates", G, null, null, null, null),
-        new("checklists.manage-project", "Checklists", "Manage project templates and task-specific items", null, P, P, null, null),
-        new("checklists.complete", "Checklists", "Tick checklist items on own task", null, O, null, O, null),
+        new(AlgorithmsView, "Algorithms", "View algorithm submissions", G, P, P, O, P),
+        new(AlgorithmsSubmit, "Algorithms", "Submit an algorithm for own task", null, O, null, O, null),
+        new(AlgorithmsApprove, "Algorithms", "Approve or reject algorithms", null, P, null, null, null),
+        new(ChecklistsManage, "Checklists", "Manage global checklist templates", G, null, null, null, null),
+        new(ChecklistsManageProject, "Checklists", "Manage project templates and task-specific items", null, P, P, null, null),
+        new(ChecklistsComplete, "Checklists", "Tick checklist items on own task", null, O, null, O, null),
 
         // Time
-        new("time.view", "Time", "View work sessions and totals", G, P, P, O, null),
-        new("time.adjust", "Time", "Add time adjustments with a reason", null, P, P, null, null),
+        new(TimeView, "Time", "View work sessions and totals", G, P, P, O, null),
+        new(TimeAdjust, "Time", "Add time adjustments with a reason", null, P, P, null, null),
 
         // Requests
         new("deadlines.request", "Requests", "Request a deadline extension", null, P, P, O, null),

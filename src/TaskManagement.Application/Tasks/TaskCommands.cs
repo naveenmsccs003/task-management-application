@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManagement.Application.Access;
 using TaskManagement.Application.Audit;
+using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
+using TaskManagement.Application.Work;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Tasks;
+using TaskManagement.Domain.Time;
 
 namespace TaskManagement.Application.Tasks;
 
@@ -20,6 +23,9 @@ public sealed class TaskCommands(
     TaskAccess access,
     TaskQueries queries,
     PermissionService permissions,
+    ChecklistTemplates templates,
+    TaskChecklist checklist,
+    WorkService work,
     IAuditLog auditLog,
     TimeProvider timeProvider)
 {
@@ -59,6 +65,21 @@ public sealed class TaskCommands(
             return Error.Conflict("project.no_lead", "Add an active Team Leader or Project Manager to the project before creating tasks.");
         }
 
+        // An explicit template must be usable here; otherwise the project's default applies if it is still active.
+        Domain.Checklists.ChecklistTemplate? template = null;
+        if (command.ChecklistTemplateId is { } templateId)
+        {
+            template = await templates.FindUsableAsync(templateId, projectId, cancellationToken);
+            if (template is null)
+            {
+                return new FieldErrors().Add("checklistTemplateId", "Choose an active global template or one of this project's templates.").ToError();
+            }
+        }
+        else if (project.DefaultChecklistTemplateId is { } defaultId)
+        {
+            template = await templates.FindUsableAsync(defaultId, projectId, cancellationToken);
+        }
+
         var details = new TaskDetails(
             command.Title!,
             command.Description,
@@ -74,6 +95,11 @@ public sealed class TaskCommands(
         var number = await db.AllocateTaskNumberAsync(projectId, cancellationToken);
         var task = TaskItem.Create(projectId, project.Key, number, details, currentUser.RequiredUserId, timeProvider.GetUtcNow());
         db.Tasks.Add(task);
+        if (template is not null)
+        {
+            checklist.Apply(task, template);
+        }
+
         auditLog.Record("task.created", "Task", task.Id.ToString(), new AuditChanges()
             .Set("key", task.Key)
             .Set("title", task.Title)
@@ -83,7 +109,8 @@ public sealed class TaskCommands(
             .Set("dueDate", task.DueDate)
             .Set("allocatedMinutes", task.AllocatedMinutes)
             .Set("algorithmRequired", task.AlgorithmRequired)
-            .Set("labels", task.Labels), projectId);
+            .Set("labels", task.Labels)
+            .Set("checklistTemplateId", task.ChecklistTemplateId), projectId);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return await queries.GetAsync(task.Id, cancellationToken);
@@ -223,11 +250,15 @@ public sealed class TaskCommands(
 
         var task = visible.Task;
         var previousStatus = task.Status;
-        var result = task.Cancel(command.Reason!, currentUser.RequiredUserId, timeProvider.GetUtcNow());
+        var now = timeProvider.GetUtcNow();
+        var result = task.Cancel(command.Reason!, currentUser.RequiredUserId, now);
         if (result.IsFailure)
         {
             return result.Error!;
         }
+
+        // T15: cancelling an In progress task ends its work session.
+        await work.CloseActiveSessionAsync(task.Id, SessionEndReason.Cancelled, now, cancellationToken);
 
         auditLog.Record("task.cancelled", "Task", task.Id.ToString(), new AuditChanges()
             .Change("status", previousStatus, task.Status)

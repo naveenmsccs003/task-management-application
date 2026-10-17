@@ -20,14 +20,15 @@ public sealed class TaskStatusChange
 
     public TaskAction Action { get; private set; }
 
-    public Guid ActorId { get; private set; }
+    /// <summary>Null when the system made the change (e.g. a session auto-closed by the background job).</summary>
+    public Guid? ActorId { get; private set; }
 
     public string? Comment { get; private set; }
 
     public DateTimeOffset OccurredAt { get; private set; }
 
     internal static TaskStatusChange Create(
-        Guid taskId, int revision, TaskItemStatus? from, TaskItemStatus to, TaskAction action, Guid actorId, string? comment, DateTimeOffset now) =>
+        Guid taskId, int revision, TaskItemStatus? from, TaskItemStatus to, TaskAction action, Guid? actorId, string? comment, DateTimeOffset now) =>
         new()
         {
             Id = Guid.CreateVersion7(now),

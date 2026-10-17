@@ -17,7 +17,21 @@ export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TaskType = 'Feature' | 'Bug' | 'Improvement' | 'Research' | 'Other';
 
 /** Actions the server says the caller may take now (docs/api-design.md §5). */
-export type TaskActionName = 'update' | 'assign' | 'cancel' | 'delete' | 'comment';
+export type TaskActionName =
+  | 'update'
+  | 'assign'
+  | 'cancel'
+  | 'delete'
+  | 'comment'
+  | 'start'
+  | 'pause'
+  | 'resume'
+  | 'stop'
+  | 'submitAlgorithm'
+  | 'reviewAlgorithm'
+  | 'completeChecklist'
+  | 'manageChecklist'
+  | 'adjustTime';
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   Draft: 'Draft',
@@ -61,15 +75,20 @@ export interface Task {
   dueDate: string | null;
   originalDueDate: string | null;
   allocatedMinutes: number | null;
+  spentSeconds: number;
   algorithmRequired: boolean;
+  algorithmApproved: boolean;
   labels: string[];
   currentRevision: number;
-  flags: { overdue: boolean };
+  flags: { overdue: boolean; overAllocated: boolean };
+  checklist: { total: number; done: number; mandatoryTotal: number; mandatoryDone: number };
   cancelReason: string | null;
   createdBy: UserRef;
   createdAt: string;
   updatedAt: string;
   allowedActions: TaskActionName[];
+  canViewAlgorithm: boolean;
+  canViewTime: boolean;
   version: number;
 }
 
@@ -111,8 +130,73 @@ export interface SaveTask {
   allocatedMinutes: number | null;
   algorithmRequired: boolean;
   labels: string[];
+  checklistTemplateId?: string | null;
   version?: number;
 }
+
+export interface AlgorithmSubmission {
+  id: string;
+  version: number;
+  revision: number;
+  content: string;
+  submittedBy: UserRef | null;
+  submittedAt: string;
+  decision: 'Pending' | 'Approved' | 'Rejected';
+  decidedBy: UserRef | null;
+  decidedAt: string | null;
+  decisionComment: string | null;
+}
+
+export interface ChecklistItem {
+  id: string;
+  sortOrder: number;
+  text: string;
+  isMandatory: boolean;
+  fromTemplate: boolean;
+  isCompleted: boolean;
+  completedBy: UserRef | null;
+  completedAt: string | null;
+  note: string | null;
+  version: number;
+}
+
+export type SessionEndReason = 'Paused' | 'Stopped' | 'Submitted' | 'AutoClosed' | 'Reassigned' | 'Cancelled' | 'MemberDeactivated';
+
+export interface WorkSession {
+  id: string;
+  user: UserRef | null;
+  revision: number;
+  startedAt: string;
+  endedAt: string | null;
+  endReason: SessionEndReason | null;
+  seconds: number;
+}
+
+export interface TimeAdjustment {
+  id: string;
+  user: UserRef | null;
+  revision: number;
+  minutes: number;
+  reason: string;
+  createdBy: UserRef | null;
+  createdAt: string;
+}
+
+/** GET /api/v1/tasks/{id}/time */
+export interface TaskTime {
+  allocatedMinutes: number | null;
+  spentSeconds: number;
+  overrunSeconds: number;
+  percentOfAllocation: number | null;
+  activeSession: WorkSession | null;
+  byRevision: { revision: number; seconds: number }[];
+  byMember: { user: UserRef | null; seconds: number }[];
+  sessions: WorkSession[];
+  adjustments: TimeAdjustment[];
+  serverTime: string;
+}
+
+export { formatClock, formatDuration } from '../../core/time-format';
 
 export interface TaskHistoryEntry {
   occurredAt: string;

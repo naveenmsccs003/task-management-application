@@ -78,6 +78,12 @@ public sealed class TaskItem
 
     public bool AlgorithmRequired { get; private set; }
 
+    /// <summary>The currently valid approved algorithm submission (FR-ALG-01).</summary>
+    public Guid? AlgorithmApprovedSubmissionId { get; private set; }
+
+    /// <summary>Set when a task is created from a checklist template (the items themselves are copied, FR-CHK-02).</summary>
+    public Guid? ChecklistTemplateId { get; private set; }
+
     public List<string> Labels { get; private set; }
 
     public int CurrentRevision { get; private set; }
@@ -244,6 +250,94 @@ public sealed class TaskItem
         return Result.Success();
     }
 
+    public void RecordChecklistTemplate(Guid templateId) => ChecklistTemplateId = templateId;
+
+    /// <summary>T3: the assignee submits an algorithm (the submission itself is a separate, immutable record).</summary>
+    public Result SubmitAlgorithm(Guid by, DateTimeOffset now) => Transition(TaskAction.SubmitAlgorithm, TaskItemStatus.AlgorithmSubmitted, by, null, now);
+
+    /// <summary>T4: the algorithm is approved; the task is ready to start.</summary>
+    public Result ApproveAlgorithm(Guid submissionId, Guid by, string? comment, DateTimeOffset now)
+    {
+        var result = Transition(TaskAction.ApproveAlgorithm, TaskItemStatus.ReadyToStart, by, comment, now);
+        if (result.IsSuccess)
+        {
+            AlgorithmApprovedSubmissionId = submissionId;
+        }
+
+        return result;
+    }
+
+    /// <summary>T5: rejected with a comment; the assignee submits a new version.</summary>
+    public Result RejectAlgorithm(Guid by, string comment, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comment);
+        return Transition(TaskAction.RejectAlgorithm, TaskItemStatus.AwaitingAlgorithm, by, comment, now);
+    }
+
+    /// <summary>
+    /// T6: start (or restart) work. A task still waiting for its algorithm gets a specific reason (AC-ALG-1) instead of
+    /// the generic transition error.
+    /// </summary>
+    public Result Start(Guid by, DateTimeOffset now)
+    {
+        if (Status is TaskItemStatus.AwaitingAlgorithm or TaskItemStatus.AlgorithmSubmitted)
+        {
+            return Error.Conflict("task.algorithm_approval_required", $"Task {Key} needs an approved algorithm before work can start.");
+        }
+
+        var result = Transition(TaskAction.Start, TaskItemStatus.InProgress, by, null, now);
+        if (result.IsSuccess)
+        {
+            FirstStartedAt ??= now;
+        }
+
+        return result;
+    }
+
+    /// <summary>T7: short break; the caller closes the active session.</summary>
+    public Result Pause(Guid by, string? reason, DateTimeOffset now) =>
+        Transition(TaskAction.Pause, TaskItemStatus.Paused, by, string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(), now);
+
+    /// <summary>T8: back to work after a pause.</summary>
+    public Result Resume(Guid by, DateTimeOffset now) => Transition(TaskAction.Resume, TaskItemStatus.InProgress, by, null, now);
+
+    /// <summary>T9: work halted (end of day, blocked); a reason is required.</summary>
+    public Result Stop(Guid by, string reason, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        return Transition(TaskAction.Stop, TaskItemStatus.Stopped, by, reason.Trim(), now);
+    }
+
+    /// <summary>
+    /// The system stops work it had to interrupt (session auto-closed, member deactivated). Only an In progress task has a
+    /// session to interrupt; other states are left alone.
+    /// </summary>
+    public void StopBySystem(string reason, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (Status != TaskItemStatus.InProgress)
+        {
+            return;
+        }
+
+        RecordStatus(Status, TaskItemStatus.Stopped, TaskAction.Stop, null, reason, now);
+        Status = TaskItemStatus.Stopped;
+        UpdatedAt = now;
+    }
+
+    private Result Transition(TaskAction action, TaskItemStatus target, Guid by, string? comment, DateTimeOffset now)
+    {
+        if (!TaskWorkflow.IsAllowed(Status, action))
+        {
+            return TaskWorkflow.InvalidTransition(Key, Status, action);
+        }
+
+        RecordStatus(Status, target, action, by, comment, now);
+        Status = target;
+        Touch(by, now);
+        return Result.Success();
+    }
+
     private void ApplyDetails(TaskDetails details, Guid by, DateTimeOffset now)
     {
         Title = details.Title.Trim();
@@ -258,7 +352,7 @@ public sealed class TaskItem
         Touch(by, now);
     }
 
-    private void RecordStatus(TaskItemStatus? from, TaskItemStatus to, TaskAction action, Guid by, string? comment, DateTimeOffset now) =>
+    private void RecordStatus(TaskItemStatus? from, TaskItemStatus to, TaskAction action, Guid? by, string? comment, DateTimeOffset now) =>
         _statusHistory.Add(TaskStatusChange.Create(Id, CurrentRevision, from, to, action, by, comment, now));
 
     private void Touch(Guid by, DateTimeOffset now)

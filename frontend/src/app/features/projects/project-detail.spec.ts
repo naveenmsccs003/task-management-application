@@ -16,6 +16,7 @@ const project: Project = {
   targetEndDate: null,
   algorithmRequiredDefault: false,
   closeOnApproval: false,
+  defaultChecklistTemplateId: null,
   memberCount: 3,
   openTaskCount: 2,
   myRole: { id: 'pm', name: 'Project Manager' },

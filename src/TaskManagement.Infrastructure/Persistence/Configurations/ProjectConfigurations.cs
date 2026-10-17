@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TaskManagement.Domain.Access;
+using TaskManagement.Domain.Checklists;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Projects;
 
@@ -24,6 +25,7 @@ internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.Version).IsRowVersion();
         builder.HasOne<User>().WithMany().HasForeignKey(p => p.CreatedBy).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(p => p.UpdatedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ChecklistTemplate>().WithMany().HasForeignKey(p => p.DefaultChecklistTemplateId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(p => p.Status);
     }
 }

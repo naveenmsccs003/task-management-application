@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManagement.Application.Access;
 using TaskManagement.Application.Audit;
+using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
@@ -16,6 +17,7 @@ public sealed class ProjectCommands(
     ProjectAccess access,
     ProjectQueries queries,
     PermissionService permissions,
+    ChecklistTemplates templates,
     IAuditLog auditLog,
     TimeProvider timeProvider)
 {
@@ -90,6 +92,13 @@ public sealed class ProjectCommands(
         }
 
         var project = found.Project;
+        if (command.DefaultChecklistTemplateId is { } templateId
+            && templateId != project.DefaultChecklistTemplateId
+            && await templates.FindUsableAsync(templateId, project.Id, cancellationToken) is null)
+        {
+            return new FieldErrors().Add("defaultChecklistTemplateId", "Choose an active global template or one of this project's templates.").ToError();
+        }
+
         db.ExpectVersion(project, command.Version);
         var changes = new AuditChanges()
             .Change("name", project.Name, command.Name!.Trim())
@@ -97,7 +106,8 @@ public sealed class ProjectCommands(
             .Change("startDate", project.StartDate, command.StartDate)
             .Change("targetEndDate", project.TargetEndDate, command.TargetEndDate)
             .Change("algorithmRequiredDefault", project.AlgorithmRequiredDefault, command.AlgorithmRequiredDefault)
-            .Change("closeOnApproval", project.CloseOnApproval, command.CloseOnApproval);
+            .Change("closeOnApproval", project.CloseOnApproval, command.CloseOnApproval)
+            .Change("defaultChecklistTemplateId", project.DefaultChecklistTemplateId, command.DefaultChecklistTemplateId);
         var result = project.UpdateDetails(
             command.Name, command.Description, command.StartDate, command.TargetEndDate,
             command.AlgorithmRequiredDefault, command.CloseOnApproval, currentUser.RequiredUserId, timeProvider.GetUtcNow());
@@ -105,6 +115,8 @@ public sealed class ProjectCommands(
         {
             return result.Error!;
         }
+
+        project.SetDefaultChecklistTemplate(command.DefaultChecklistTemplateId);
 
         if (!changes.IsEmpty)
         {

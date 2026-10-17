@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { ActiveSessionService } from '../work/active-session.service';
+import { formatClock } from '../time-format';
 
 @Component({
   selector: 'app-shell',
@@ -27,6 +29,9 @@ import { AuthService } from '../auth/auth.service';
           @if (auth.hasPermission('roles.view')) {
             <a mat-button routerLink="/admin/roles" routerLinkActive="active">Roles</a>
           }
+          @if (auth.hasPermission('checklists.manage')) {
+            <a mat-button routerLink="/checklist-templates" routerLinkActive="active">Checklists</a>
+          }
           @if (auth.hasPermission('settings.manage')) {
             <a mat-button routerLink="/admin/settings" routerLinkActive="active">Settings</a>
           }
@@ -42,6 +47,13 @@ import { AuthService } from '../auth/auth.service';
         </mat-menu>
       }
     </mat-toolbar>
+    @if (activeSession.session(); as s) {
+      <div class="timer" role="status" aria-live="off">
+        Working on
+        <a [routerLink]="['/tasks', s.taskId]">{{ s.taskKey }} · {{ s.taskTitle }}</a>
+        <span class="clock" data-testid="work-timer">{{ clock(activeSession.elapsedSeconds()) }}</span>
+      </div>
+    }
     <main id="main-content" tabindex="-1">
       <router-outlet />
     </main>
@@ -66,6 +78,22 @@ import { AuthService } from '../auth/auth.service';
     }
     .spacer {
       flex: 1;
+    }
+    .timer {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 6px 16px;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+    .timer a {
+      color: inherit;
+      font-weight: 500;
+    }
+    .clock {
+      font-variant-numeric: tabular-nums;
     }
     nav a.active {
       text-decoration: underline;
@@ -97,7 +125,23 @@ import { AuthService } from '../auth/auth.service';
 })
 export class Shell {
   protected readonly auth = inject(AuthService);
+  protected readonly activeSession = inject(ActiveSessionService);
   private readonly router = inject(Router);
+
+  constructor() {
+    // Show the running timer after sign-in or a page reload; clear it on sign-out.
+    effect(() => {
+      if (this.auth.me()) {
+        void this.activeSession.refresh();
+      } else {
+        this.activeSession.clear();
+      }
+    });
+  }
+
+  protected clock(seconds: number): string {
+    return formatClock(seconds);
+  }
 
   protected async signOut(): Promise<void> {
     await this.auth.signOut();

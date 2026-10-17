@@ -23,15 +23,20 @@ const task: Task = {
   dueDate: '2026-11-01',
   originalDueDate: null,
   allocatedMinutes: 480,
+  spentSeconds: 0,
   algorithmRequired: false,
+  algorithmApproved: false,
   labels: ['backend'],
   currentRevision: 0,
-  flags: { overdue: false },
+  flags: { overdue: false, overAllocated: false },
+  checklist: { total: 0, done: 0, mandatoryTotal: 0, mandatoryDone: 0 },
   cancelReason: null,
   createdBy: { id: 'u1', name: 'Pat Manager' },
   createdAt: '2026-10-17T09:00:00Z',
   updatedAt: '2026-10-17T09:00:00Z',
   allowedActions: ['update', 'assign', 'cancel', 'delete', 'comment'],
+  canViewAlgorithm: true,
+  canViewTime: true,
   version: 1,
 };
 
@@ -58,7 +63,16 @@ describe('TaskDetail', () => {
     await fixture.whenStable();
     backend.expectOne('/api/v1/tasks/t1/comments').flush([]);
     await fixture.whenStable();
+    flushSections();
+    await fixture.whenStable();
     return fixture;
+  }
+
+  /** The algorithm, checklist and time sections load their own data when they are shown. */
+  function flushSections() {
+    backend.match('/api/v1/tasks/t1/algorithm').forEach((r) => r.flush([]));
+    backend.match('/api/v1/tasks/t1/checklist').forEach((r) => r.flush([]));
+    backend.match('/api/v1/tasks/t1/time').forEach((r) => r.flush(null));
   }
 
   function buttons(element: HTMLElement): string[] {
@@ -102,6 +116,8 @@ describe('TaskDetail', () => {
     backend.expectOne('/api/v1/tasks/t1/history').flush([]);
     await done;
     fixture.detectChanges();
+    await fixture.whenStable();
+    flushSections();
 
     expect(element.querySelector('[data-testid="task-status"]')?.textContent).toBe('Ready to start');
     expect(buttons(element)).toEqual(['Edit', 'Cancel task']);

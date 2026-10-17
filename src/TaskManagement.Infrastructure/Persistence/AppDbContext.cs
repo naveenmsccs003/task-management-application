@@ -1,13 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 using TaskManagement.Application.Common;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
+using TaskManagement.Domain.Checklists;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
+using TaskManagement.Domain.Operations;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Settings;
 using TaskManagement.Domain.Tasks;
+using TaskManagement.Domain.Time;
 
 namespace TaskManagement.Infrastructure.Persistence;
 
@@ -44,6 +48,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
 
     public DbSet<TaskCommentEdit> TaskCommentEdits => Set<TaskCommentEdit>();
+
+    public DbSet<AlgorithmSubmission> AlgorithmSubmissions => Set<AlgorithmSubmission>();
+
+    public DbSet<ChecklistTemplate> ChecklistTemplates => Set<ChecklistTemplate>();
+
+    public DbSet<TaskChecklistItem> TaskChecklistItems => Set<TaskChecklistItem>();
+
+    public DbSet<WorkSession> WorkSessions => Set<WorkSession>();
+
+    public DbSet<TimeAdjustment> TimeAdjustments => Set<TimeAdjustment>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
+    public bool IsUniqueViolation(DbUpdateException exception) =>
+        exception?.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    public void DiscardChanges() => ChangeTracker.Clear();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken) =>
         Database.BeginTransactionAsync(cancellationToken);

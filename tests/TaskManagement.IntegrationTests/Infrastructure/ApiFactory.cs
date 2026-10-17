@@ -58,6 +58,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Auth:PasswordPermitsPerQuarterHour", "10000");
         builder.UseSetting("App:PublicBaseUrl", "https://tma.test");
         builder.UseSetting("Email:BackgroundWorkerEnabled", "false"); // tests call FlushEmailsAsync instead
+        builder.UseSetting("Jobs:SessionMonitorEnabled", "false"); // tests run the monitor explicitly
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);

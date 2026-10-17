@@ -5,18 +5,23 @@ import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
 import { applyServerErrors, controlError } from '../../core/api/form-errors';
+import { ChecklistsApi } from '../checklists/checklists.api';
+import { ChecklistTemplate } from '../checklists/checklists.models';
 import { ProjectsApi } from './projects.api';
 import { Project } from './projects.models';
 
 /** Create (route /projects/new) or edit (route /projects/:id/edit) a project. */
 @Component({
   selector: 'app-project-form',
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatCardModule, MatCheckboxModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    ReactiveFormsModule, RouterLink, MatButtonModule, MatCardModule, MatCheckboxModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (project(); as p) {
@@ -57,6 +62,20 @@ import { Project } from './projects.models';
               <mat-error>{{ error('targetEndDate', 'Target end date') }}</mat-error>
             </mat-form-field>
           </div>
+          @if (project()) {
+            <mat-form-field>
+              <mat-label>Default checklist for new tasks</mat-label>
+              <mat-select formControlName="defaultChecklistTemplateId">
+                <mat-option value="">None</mat-option>
+                @for (t of templates(); track t.id) {
+                  @if (t.isActive) {
+                    <mat-option [value]="t.id">{{ t.name }}{{ t.projectId ? '' : ' (global)' }}</mat-option>
+                  }
+                }
+              </mat-select>
+              <mat-error>{{ error('defaultChecklistTemplateId', 'Default checklist') }}</mat-error>
+            </mat-form-field>
+          }
           <mat-checkbox formControlName="algorithmRequiredDefault">New tasks require an approved algorithm by default</mat-checkbox>
           <mat-checkbox formControlName="closeOnApproval">Close tasks as soon as the Team Leader approves them</mat-checkbox>
           @if (failure(); as message) {
@@ -93,6 +112,7 @@ import { Project } from './projects.models';
 })
 export class ProjectForm implements OnInit {
   private readonly api = inject(ProjectsApi);
+  private readonly checklistsApi = inject(ChecklistsApi);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -100,6 +120,7 @@ export class ProjectForm implements OnInit {
   readonly id = input<string>();
 
   protected readonly project = signal<Project | null>(null);
+  protected readonly templates = signal<ChecklistTemplate[]>([]);
   protected readonly busy = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly form = inject(NonNullableFormBuilder).group({
@@ -110,6 +131,7 @@ export class ProjectForm implements OnInit {
     targetEndDate: [''],
     algorithmRequiredDefault: [false],
     closeOnApproval: [false],
+    defaultChecklistTemplateId: [''],
   });
 
   async ngOnInit(): Promise<void> {
@@ -126,8 +148,10 @@ export class ProjectForm implements OnInit {
         targetEndDate: project.targetEndDate ?? '',
         algorithmRequiredDefault: project.algorithmRequiredDefault,
         closeOnApproval: project.closeOnApproval,
+        defaultChecklistTemplateId: project.defaultChecklistTemplateId ?? '',
       });
       this.form.controls.key.disable();
+      this.templates.set(await firstValueFrom(this.checklistsApi.list(project.id)));
     } catch (error) {
       this.failure.set(asApiError(error).message);
     }
@@ -150,6 +174,7 @@ export class ProjectForm implements OnInit {
       key: value.key.toUpperCase(),
       startDate: value.startDate || null,
       targetEndDate: value.targetEndDate || null,
+      defaultChecklistTemplateId: value.defaultChecklistTemplateId || null,
     };
     this.busy.set(true);
     this.failure.set(null);

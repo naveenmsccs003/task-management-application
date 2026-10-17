@@ -195,6 +195,165 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_logs", "audit");
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.ChecklistTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_checklist_templates");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_checklist_templates_created_by");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_checklist_templates_project_id");
+
+                    b.HasIndex("UpdatedBy")
+                        .HasDatabaseName("ix_checklist_templates_updated_by");
+
+                    b.ToTable("checklist_templates", "tasks");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.ChecklistTemplateItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_mandatory");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_checklist_template_items");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("ix_checklist_template_items_template_id");
+
+                    b.ToTable("checklist_template_items", "tasks");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.TaskChecklistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("CompletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("completed_by");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_completed");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_mandatory");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<int?>("ReopenedInRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("reopened_in_revision");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid?>("SourceTemplateItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_item_id");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("text");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_checklist_items");
+
+                    b.HasIndex("CompletedBy")
+                        .HasDatabaseName("ix_task_checklist_items_completed_by");
+
+                    b.HasIndex("TaskId", "SortOrder")
+                        .HasDatabaseName("ix_task_checklist_items_task_id_sort_order");
+
+                    b.ToTable("task_checklist_items", "tasks");
+                });
+
             modelBuilder.Entity("TaskManagement.Domain.Identity.PasswordToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -440,6 +599,44 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.Operations.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("Key")
+                        .HasColumnType("uuid")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("endpoint");
+
+                    b.Property<string>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.HasKey("UserId", "Key")
+                        .HasName("pk_idempotency_keys");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_keys_created_at");
+
+                    b.ToTable("idempotency_keys", "ops");
+                });
+
             modelBuilder.Entity("TaskManagement.Domain.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -462,6 +659,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
+
+                    b.Property<Guid?>("DefaultChecklistTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_checklist_template_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -513,6 +714,9 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CreatedBy")
                         .HasDatabaseName("ix_projects_created_by");
+
+                    b.HasIndex("DefaultChecklistTemplateId")
+                        .HasDatabaseName("ix_projects_default_checklist_template_id");
 
                     b.HasIndex("Key")
                         .IsUnique()
@@ -615,6 +819,81 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasName("pk_global_settings");
 
                     b.ToTable("global_settings", "settings");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.AlgorithmSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("decision");
+
+                    b.Property<string>("DecisionComment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decision_comment");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_algorithm_submissions");
+
+                    b.HasIndex("DecidedBy")
+                        .HasDatabaseName("ix_algorithm_submissions_decided_by");
+
+                    b.HasIndex("SubmittedBy")
+                        .HasDatabaseName("ix_algorithm_submissions_submitted_by");
+
+                    b.HasIndex("TaskId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_algorithm_submissions_pending")
+                        .HasFilter("decision = 'Pending'");
+
+                    b.HasIndex("TaskId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_algorithm_submissions_task_id_version");
+
+                    b.ToTable("algorithm_submissions", "tasks", t =>
+                        {
+                            t.HasCheckConstraint("ck_algorithm_submissions_decision", "decision IN ('Pending', 'Approved', 'Rejected')");
+                        });
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Tasks.TaskAssignment", b =>
@@ -761,6 +1040,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AlgorithmApprovedSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("algorithm_approved_submission_id");
+
                     b.Property<bool>("AlgorithmRequired")
                         .HasColumnType("boolean")
                         .HasColumnName("algorithm_required");
@@ -785,6 +1068,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CancelledBy")
                         .HasColumnType("uuid")
                         .HasColumnName("cancelled_by");
+
+                    b.Property<Guid?>("ChecklistTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checklist_template_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -879,8 +1166,14 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tasks");
 
+                    b.HasIndex("AlgorithmApprovedSubmissionId")
+                        .HasDatabaseName("ix_tasks_algorithm_approved_submission_id");
+
                     b.HasIndex("CancelledBy")
                         .HasDatabaseName("ix_tasks_cancelled_by");
+
+                    b.HasIndex("ChecklistTemplateId")
+                        .HasDatabaseName("ix_tasks_checklist_template_id");
 
                     b.HasIndex("CreatedBy")
                         .HasDatabaseName("ix_tasks_created_by");
@@ -932,7 +1225,7 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("action");
 
-                    b.Property<Guid>("ActorId")
+                    b.Property<Guid?>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
 
@@ -981,6 +1274,124 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.Time.TimeAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("minutes");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_time_adjustments");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_time_adjustments_created_by");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_time_adjustments_user_id");
+
+                    b.HasIndex("TaskId", "Revision")
+                        .HasDatabaseName("ix_time_adjustments_task_id_revision");
+
+                    b.ToTable("time_adjustments", "time", t =>
+                        {
+                            t.HasCheckConstraint("ck_time_adjustments_minutes", "minutes <> 0");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Time.WorkSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_seconds");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("end_reason");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_sessions");
+
+                    b.HasIndex("TaskId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_work_sessions_active_task")
+                        .HasFilter("ended_at IS NULL");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_work_sessions_active_user")
+                        .HasFilter("ended_at IS NULL");
+
+                    b.HasIndex("TaskId", "Revision")
+                        .HasDatabaseName("ix_work_sessions_task_id_revision");
+
+                    b.HasIndex("UserId", "StartedAt")
+                        .HasDatabaseName("ix_work_sessions_user_id_started_at");
+
+                    b.ToTable("work_sessions", "time", t =>
+                        {
+                            t.HasCheckConstraint("ck_work_sessions_end_after_start", "ended_at IS NULL OR ended_at >= started_at");
+
+                            t.HasCheckConstraint("ck_work_sessions_end_reason", "end_reason IN ('Paused', 'Stopped', 'Submitted', 'AutoClosed', 'Reassigned', 'Cancelled', 'MemberDeactivated')");
+                        });
+                });
+
             modelBuilder.Entity("TaskManagement.Infrastructure.Persistence.Configurations.TaskCounter", b =>
                 {
                     b.Property<Guid>("ProjectId")
@@ -1014,6 +1425,55 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_role_permissions_roles_role_id");
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.ChecklistTemplate", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_checklist_templates_users_created_by");
+
+                    b.HasOne("TaskManagement.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_checklist_templates_projects_project_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_checklist_templates_users_updated_by");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.ChecklistTemplateItem", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Checklists.ChecklistTemplate", null)
+                        .WithMany("Items")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_checklist_template_items_checklist_templates_template_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.TaskChecklistItem", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CompletedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_task_checklist_items_users_completed_by");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_checklist_items_tasks_task_id");
+                });
+
             modelBuilder.Entity("TaskManagement.Domain.Identity.PasswordToken", b =>
                 {
                     b.HasOne("TaskManagement.Domain.Identity.User", null)
@@ -1041,6 +1501,12 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CreatedBy")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_projects_users_created_by");
+
+                    b.HasOne("TaskManagement.Domain.Checklists.ChecklistTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultChecklistTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_projects_checklist_templates_default_checklist_template_id");
 
                     b.HasOne("TaskManagement.Domain.Identity.User", null)
                         .WithMany()
@@ -1083,6 +1549,29 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_project_members_users_user_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Tasks.AlgorithmSubmission", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_algorithm_submissions_users_decided_by");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("SubmittedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_algorithm_submissions_users_submitted_by");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_algorithm_submissions_tasks_task_id");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Tasks.TaskAssignment", b =>
@@ -1150,6 +1639,12 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("TaskManagement.Domain.Tasks.TaskItem", b =>
                 {
+                    b.HasOne("TaskManagement.Domain.Tasks.AlgorithmSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("AlgorithmApprovedSubmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tasks_algorithm_submissions_algorithm_approved_submission_id");
+
                     b.HasOne("TaskManagement.Domain.Identity.User", null)
                         .WithMany()
                         .HasForeignKey("AssigneeId")
@@ -1161,6 +1656,12 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CancelledBy")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_tasks_users_cancelled_by");
+
+                    b.HasOne("TaskManagement.Domain.Checklists.ChecklistTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("ChecklistTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tasks_checklist_templates_checklist_template_id");
 
                     b.HasOne("TaskManagement.Domain.Identity.User", null)
                         .WithMany()
@@ -1190,7 +1691,6 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_task_status_history_users_actor_id");
 
                     b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
@@ -1199,6 +1699,47 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_task_status_history_tasks_task_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Time.TimeAdjustment", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_adjustments_users_created_by");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_adjustments_tasks_task_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_adjustments_users_user_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Time.WorkSession", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_sessions_tasks_task_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_sessions_users_user_id");
                 });
 
             modelBuilder.Entity("TaskManagement.Infrastructure.Persistence.Configurations.TaskCounter", b =>
@@ -1214,6 +1755,11 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("TaskManagement.Domain.Access.Role", b =>
                 {
                     b.Navigation("Permissions");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Checklists.ChecklistTemplate", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Tasks.TaskComment", b =>

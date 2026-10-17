@@ -7,6 +7,7 @@ using TaskManagement.Application.Settings;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
 using TaskManagement.Domain.Identity;
+using TaskManagement.Domain.Time;
 
 namespace TaskManagement.Application.Members;
 
@@ -167,6 +168,16 @@ public sealed class MemberCommands(
         var now = timeProvider.GetUtcNow();
         user.Deactivate(currentUser.RequiredUserId, now);
         await tokenIssuer.RevokeAllAsync(user.Id, now, cancellationToken);
+
+        // Edge case 3: a running work session ends and its task stops; it then needs reassigning.
+        var session = await db.WorkSessions.FirstOrDefaultAsync(s => s.UserId == user.Id && s.EndedAt == null, cancellationToken);
+        if (session is not null)
+        {
+            session.End(now, SessionEndReason.MemberDeactivated);
+            var task = await db.Tasks.FirstAsync(t => t.Id == session.TaskId, cancellationToken);
+            task.StopBySystem("The assignee's account was deactivated.", now);
+        }
+
         auditLog.Record("member.deactivated", "User", user.Id.ToString());
         await db.SaveChangesAsync(cancellationToken);
         sessions.Evict(user.Id);

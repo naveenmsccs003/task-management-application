@@ -41,6 +41,9 @@ public sealed class Project
     /// <summary>Q2 option: the TL's approval closes the task directly.</summary>
     public bool CloseOnApproval { get; private set; }
 
+    /// <summary>Checklist template applied to new tasks unless the creator picks another (FR-TASK-03).</summary>
+    public Guid? DefaultChecklistTemplateId { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public Guid? CreatedBy { get; private set; }
@@ -137,6 +140,8 @@ public sealed class Project
         Touch(by, now);
         return Result.Success();
     }
+
+    public void SetDefaultChecklistTemplate(Guid? templateId) => DefaultChecklistTemplateId = templateId;
 
     /// <summary>Moves the project to <paramref name="target"/> if the change is allowed from its current status.</summary>
     public Result ChangeStatus(ProjectStatus target, Guid by, DateTimeOffset now)

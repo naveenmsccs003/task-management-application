@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
+using TaskManagement.Application.Time;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
 using TaskManagement.Domain.Projects;
@@ -8,7 +10,7 @@ using TaskManagement.Domain.Tasks;
 namespace TaskManagement.Application.Tasks;
 
 /// <summary>Task reads: the filtered list (FR-TASK-07), one task with its allowed actions, and its timeline.</summary>
-public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeProvider timeProvider)
+public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService time, TimeProvider timeProvider)
 {
     /// <summary>Fields the list can be sorted by (docs/api-design.md §1: only allow-listed fields).</summary>
     public static IReadOnlyList<string> SortFields { get; } = ["key", "title", "dueDate", "priority", "createdAt", "updatedAt"];
@@ -132,7 +134,7 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeProvide
 
         var statusChanges = await db.TaskStatusHistory.AsNoTracking().Where(h => h.TaskId == id).ToListAsync(cancellationToken);
         var assignments = await db.TaskAssignments.AsNoTracking().Where(a => a.TaskId == id).ToListAsync(cancellationToken);
-        var userIds = statusChanges.Select(h => h.ActorId)
+        var userIds = statusChanges.Where(h => h.ActorId != null).Select(h => h.ActorId!.Value)
             .Concat(assignments.SelectMany(a => new[] { a.AssignedBy, a.ToUserId }))
             .Concat(assignments.Where(a => a.FromUserId is not null).Select(a => a.FromUserId!.Value))
             .Distinct()
@@ -163,6 +165,13 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeProvide
             .ToDictionaryAsync(u => u.Id, u => new UserRef(u.Id, u.FullName), cancellationToken);
         var hasComments = await db.TaskComments.AnyAsync(c => c.TaskId == task.Id, cancellationToken);
         var today = Today();
+        var spent = await time.SpentSecondsAsync(task.Id, cancellationToken);
+        var checklist = await db.TaskChecklistItems.AsNoTracking()
+            .Where(i => i.TaskId == task.Id)
+            .GroupBy(i => 1)
+            .Select(g => new ChecklistSummaryDto(
+                g.Count(), g.Count(i => i.IsCompleted), g.Count(i => i.IsMandatory), g.Count(i => i.IsMandatory && i.IsCompleted)))
+            .FirstOrDefaultAsync(cancellationToken) ?? new ChecklistSummaryDto(0, 0, 0, 0);
 
         return new TaskDto(
             task.Id,
@@ -181,25 +190,30 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeProvide
             task.DueDate,
             task.OriginalDueDate,
             task.AllocatedMinutes,
+            spent,
             task.AlgorithmRequired,
+            task.AlgorithmApprovedSubmissionId is not null,
             task.Labels,
             task.CurrentRevision,
-            new TaskFlagsDto(IsOverdue(task.DueDate, task.Status, today)),
+            new TaskFlagsDto(IsOverdue(task.DueDate, task.Status, today), task.AllocatedMinutes is { } minutes && spent > minutes * 60L),
+            checklist,
             task.CancelReason,
             names.GetValueOrDefault(task.CreatedBy) ?? new UserRef(task.CreatedBy, "Unknown"),
             task.CreatedAt,
             task.UpdatedAt,
             AllowedActions(visible, hasComments),
+            visible.Allows(PermissionCatalog.AlgorithmsView),
+            visible.Allows(PermissionCatalog.TimeView),
             task.Version);
     }
 
     /// <summary>
     /// The actions offered to the caller, using the same checks the commands enforce. Workflow actions of later phases
-    /// (start, submit, review, …) are added here as they are implemented.
+    /// (submit for review, review, close, …) are added here as they are implemented.
     /// </summary>
     internal static IReadOnlyList<string> AllowedActions(VisibleTask visible, bool hasComments)
     {
-        var (task, project, permissions, _) = visible;
+        var (task, project, permissions, _, _) = visible;
         if (project.IsReadOnly || TaskWorkflow.IsFinal(task.Status))
         {
             return [];
@@ -229,6 +243,47 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeProvide
         if (TaskAccess.CanComment(visible))
         {
             actions.Add("comment");
+        }
+
+        // The assignee's own actions (FR-WORK-01, FR-ALG-01, FR-CHK-04).
+        if (visible.IsAssignee)
+        {
+            if (visible.Allows(PermissionCatalog.AlgorithmsSubmit) && TaskWorkflow.IsAllowed(task.Status, TaskAction.SubmitAlgorithm))
+            {
+                actions.Add("submitAlgorithm");
+            }
+
+            if (visible.Allows(PermissionCatalog.TasksWork))
+            {
+                foreach (var (action, name) in new[] { (TaskAction.Start, "start"), (TaskAction.Pause, "pause"), (TaskAction.Resume, "resume"), (TaskAction.Stop, "stop") })
+                {
+                    if (TaskWorkflow.IsAllowed(task.Status, action))
+                    {
+                        actions.Add(name);
+                    }
+                }
+            }
+
+            if (visible.Allows(PermissionCatalog.ChecklistsComplete) && TaskChecklist.CanTick(task.Status))
+            {
+                actions.Add("completeChecklist");
+            }
+        }
+
+        // Separation of duties (FR-ALG-05): an assignee never reviews their own algorithm.
+        if (!visible.IsAssignee && permissions.HasProjectWide(PermissionCatalog.AlgorithmsApprove) && task.Status == TaskItemStatus.AlgorithmSubmitted)
+        {
+            actions.Add("reviewAlgorithm");
+        }
+
+        if (permissions.HasProjectWide(PermissionCatalog.ChecklistsManageProject) && TaskChecklist.CanAddItems(task.Status))
+        {
+            actions.Add("manageChecklist");
+        }
+
+        if (permissions.HasProjectWide(PermissionCatalog.TimeAdjust))
+        {
+            actions.Add("adjustTime");
         }
 
         return actions;

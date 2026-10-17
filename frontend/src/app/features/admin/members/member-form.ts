@@ -68,7 +68,7 @@ import { Member, Role } from '../admin.models';
             <p class="error" role="alert">{{ message }}</p>
           }
           <div class="actions">
-            <button mat-flat-button type="submit" [disabled]="busy()">{{ member() ? 'Save changes' : 'Create and send invite' }}</button>
+            <button mat-flat-button type="submit" [disabled]="busy() || !loaded()">{{ member() ? 'Save changes' : 'Create and send invite' }}</button>
           </div>
         </form>
       </mat-card-content>
@@ -128,6 +128,8 @@ export class MemberForm implements OnInit {
   protected readonly roles = signal<Role[]>([]);
   protected readonly member = signal<Member | null>(null);
   protected readonly busy = signal(false);
+  /** Submit waits for the role list, so a fast click cannot hit a form that is still filling in (known issue L19). */
+  protected readonly loaded = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(256)]],
@@ -146,6 +148,7 @@ export class MemberForm implements OnInit {
       } else {
         this.form.controls.globalRoleId.setValue(this.roles().find((r) => r.name === 'Developer')?.id ?? '');
       }
+      this.loaded.set(true);
     } catch (error) {
       this.failure.set(asApiError(error).message);
     }

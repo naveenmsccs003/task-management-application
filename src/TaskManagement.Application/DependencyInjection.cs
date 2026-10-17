@@ -1,11 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using TaskManagement.Application.Access;
+using TaskManagement.Application.Algorithms;
 using TaskManagement.Application.Audit;
+using TaskManagement.Application.Checklists;
+using TaskManagement.Application.Common;
 using TaskManagement.Application.Identity;
 using TaskManagement.Application.Members;
 using TaskManagement.Application.Projects;
 using TaskManagement.Application.Settings;
 using TaskManagement.Application.Tasks;
+using TaskManagement.Application.Time;
+using TaskManagement.Application.Work;
 
 namespace TaskManagement.Application;
 
@@ -47,6 +52,15 @@ public static class DependencyInjection
         services.AddScoped<TaskQueries>();
         services.AddScoped<TaskCommands>();
         services.AddScoped<TaskComments>();
+
+        // Algorithms, checklists, work sessions and time
+        services.AddScoped<IdempotencyStore>();
+        services.AddScoped<AlgorithmService>();
+        services.AddScoped<ChecklistTemplates>();
+        services.AddScoped<TaskChecklist>();
+        services.AddScoped<WorkService>();
+        services.AddScoped<TimeService>();
+        services.AddScoped<SessionMonitor>();
 
         return services;
     }

@@ -88,6 +88,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/tasks/task-form').then((m) => m.TaskForm),
   },
   {
+    path: 'checklist-templates',
+    title: 'Checklist templates · Task Management',
+    canActivate: [permissionGuard('checklists.manage')],
+    loadComponent: () => import('./features/checklists/checklist-templates').then((m) => m.ChecklistTemplates),
+  },
+  {
     path: 'admin',
     children: [
       {

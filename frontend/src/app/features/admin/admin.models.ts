@@ -56,8 +56,15 @@ export interface AuthSettings {
   inviteTokenHours: number;
 }
 
+export interface WorkSettings {
+  maxSessionHours: number;
+  pauseReasonRequired: boolean;
+  allocationWarningPercent: number;
+}
+
 export interface Settings {
   auth: AuthSettings;
+  work: WorkSettings;
 }
 
 export interface AuditEntry {

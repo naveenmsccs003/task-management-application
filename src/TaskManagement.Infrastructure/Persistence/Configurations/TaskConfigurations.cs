@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using TaskManagement.Domain.Checklists;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Tasks;
@@ -36,6 +37,8 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.HasOne<User>().WithMany().HasForeignKey(t => t.CreatedBy).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(t => t.UpdatedBy).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(t => t.CancelledBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ChecklistTemplate>().WithMany().HasForeignKey(t => t.ChecklistTemplateId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<AlgorithmSubmission>().WithMany().HasForeignKey(t => t.AlgorithmApprovedSubmissionId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(t => t.StatusHistory).WithOne().HasForeignKey(h => h.TaskId).OnDelete(DeleteBehavior.Restrict);
         builder.Navigation(t => t.StatusHistory).HasField("_statusHistory").UsePropertyAccessMode(PropertyAccessMode.Field);

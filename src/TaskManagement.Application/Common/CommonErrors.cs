@@ -5,7 +5,7 @@ namespace TaskManagement.Application.Common;
 internal static class CommonErrors
 {
     public static Error NotFound(string entity) =>
-        Error.NotFound($"{entity.ToLowerInvariant()}.not_found", $"The {entity.ToLowerInvariant()} was not found.");
+        Error.NotFound($"{entity.ToLowerInvariant()}.not_found", $"The {entity.ToLowerInvariant().Replace('_', ' ')} was not found.");
 
     /// <summary>The caller can see the record but may not perform this action (docs/api-design.md §2, step 2).</summary>
     public static Error Forbidden(string action) =>

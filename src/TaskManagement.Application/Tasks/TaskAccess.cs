@@ -7,8 +7,23 @@ using TaskManagement.Domain.Tasks;
 
 namespace TaskManagement.Application.Tasks;
 
-/// <summary>A task the current member may see, with what they may do in its project.</summary>
-public sealed record VisibleTask(TaskItem Task, Project Project, ProjectPermissions Permissions, bool IsOwn);
+/// <summary>A task the current member (<see cref="UserId"/>) may see, with what they may do in its project.</summary>
+public sealed record VisibleTask(TaskItem Task, Project Project, ProjectPermissions Permissions, bool IsOwn, Guid UserId)
+{
+    /// <summary>The member is the task's current assignee (work, algorithm and checklist actions are theirs).</summary>
+    public bool IsAssignee => Task.AssigneeId == UserId;
+
+    /// <summary>
+    /// An Own-scoped grant applies only to the member's own tasks; a Project or Global grant applies to every task here.
+    /// </summary>
+    public bool Allows(string code) =>
+        Permissions.Scope(code) switch
+        {
+            null => false,
+            PermissionScope.Own => IsOwn,
+            _ => true,
+        };
+}
 
 /// <summary>
 /// Task visibility (FR-TASK-06, FR-ROLE-06): tasks.view with Project or Global scope shows every task in the project;
@@ -41,7 +56,7 @@ public sealed class TaskAccess(IAppDbContext db, ICurrentUser currentUser, Proje
         }
 
         var project = await (track ? db.Projects : db.Projects.AsNoTracking()).FirstAsync(p => p.Id == task.ProjectId, cancellationToken);
-        return new VisibleTask(task, project, permissions, isOwn);
+        return new VisibleTask(task, project, permissions, isOwn, userId);
     }
 
     /// <summary>Tasks the current member may see, for list and search queries.</summary>
@@ -66,7 +81,6 @@ public sealed class TaskAccess(IAppDbContext db, ICurrentUser currentUser, Proje
     public static bool CanComment(VisibleTask visible)
     {
         ArgumentNullException.ThrowIfNull(visible);
-        var scope = visible.Permissions.Scope(PermissionCatalog.TasksComment);
-        return scope >= PermissionScope.Project || (scope == PermissionScope.Own && visible.IsOwn);
+        return visible.Allows(PermissionCatalog.TasksComment);
     }
 }

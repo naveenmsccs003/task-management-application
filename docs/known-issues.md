@@ -1,10 +1,10 @@
 # Known Issues, Risks and Open Decisions
 
-Last updated: 2026-10-17 (Phase 5)
+Last updated: 2026-10-17 (Phase 6)
 
 ## Open decisions
 
-None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation and Phase 4 (authentication, members, roles, settings, audit) approved 2026-10-17. Phase 5 is awaiting approval.
+None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phase 4 (authentication, members, roles, settings, audit) and Phase 5 (projects, tasks, comments) approved 2026-10-17. Phase 6 is awaiting approval.
 
 ## Environment notes (development machine)
 
@@ -37,7 +37,13 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L15 | Changing an assignee after the first assignment (reassignment with approval, FR-ASG-04) is not available yet, so "tasks I was assigned to" visibility is exercised only through first assignments. | Phase 8. |
 | L16 | Admin has no task permissions in the seed matrix (Admin is not automatically a TL), so an Admin can create projects and manage members but cannot create or assign tasks unless given a project role. | By design (permissions matrix, A6). |
 | L17 | Task numbers come from a separate `projects.task_counters` row instead of a column on `projects` (see database-design.md §3.4), to avoid false concurrency conflicts on project edits. | None needed. |
-| L19 | On a heavily loaded machine the "Add member" form can be submitted before its role list has loaded; the click is ignored and the member has to press the button again. Seen once in end-to-end tests run in parallel with the backend suite. | Disable submit until the form has loaded (small UI fix, next phase). |
+| L19 | ~~On a heavily loaded machine the "Add member" form could be submitted before its role list had loaded.~~ **Resolved in Phase 6:** the button stays disabled until the form has loaded. | — |
+| L20 | No notifications yet for algorithm submitted/approved/rejected, the 80 % / 100 % allocated-hour thresholds (FR-TIME-06/07, AC-TIME-1) or auto-closed sessions (the job closes them and audits it, but tells nobody). | Phase 7 (notifications); the threshold check joins the session monitor job then. |
+| L21 | Submitting for review, the mandatory-checklist check at submission (FR-CHK-05, AC-CHK-1), reopening checklist items on a revision (FR-CHK-06) and "algorithm re-approval required" (FR-ALG-06) are not available yet, so an In progress task can only be paused, stopped or cancelled. | Phase 8 (review). |
+| L22 | Algorithm submissions take text only; attachments (FR-ALG-02) come with the attachments phase. | Phase 9. |
+| L23 | Timesheets and time reports by member, project and date range (FR-TIME-10) are not available; the task page shows per-task time only. | Phase 11. |
+| L24 | `Idempotency-Key` is honoured on the four work actions; create endpoints do not use it yet (repeated creates are prevented by the UI disabling buttons while saving). | Hardening (Phase 12). |
+| L25 | The session monitor runs on every app instance. If two instances close the same session at once, the second save hits the task's concurrency check, is logged as a failed run and the next minute's run finds nothing to do — no double close. There is no `ops.job_runs` record for the Admin health page yet. | Phase 7 (background jobs status; a database lock can make it single-runner). |
 | L18 | Fixed in Phase 5: the e2e mail helper decoded every email as quoted-printable, which corrupted links whose token started with two hex characters (`?token=9B…`), and two e2e steps could type into a list page's search box before the form page appeared. Both caused occasional false failures. | Resolved. |
 
 ## Risks

@@ -249,9 +249,13 @@ public sealed class TaskTests(ApiFactory factory)
 
         string[] Actions(JsonElement task) => task.GetProperty("allowedActions").EnumerateArray().Select(a => a.GetString()!).ToArray();
 
-        Assert.Equal(["update", "assign", "cancel", "delete", "comment"], Actions(await scenario.Pm.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(draft)}")));
-        Assert.Equal(["update", "cancel", "comment"], Actions(await scenario.Tl.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
-        Assert.Equal(["comment"], Actions(await scenario.Dev.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
+        Assert.Equal(
+            ["update", "assign", "cancel", "delete", "comment", "manageChecklist", "adjustTime"],
+            Actions(await scenario.Pm.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(draft)}")));
+        Assert.Equal(
+            ["update", "cancel", "comment", "manageChecklist", "adjustTime"],
+            Actions(await scenario.Tl.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
+        Assert.Equal(["comment", "start", "completeChecklist"], Actions(await scenario.Dev.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
         Assert.Empty(Actions(await scenario.Viewer.GetJsonAsync<JsonElement>($"/api/v1/tasks/{Id(assigned)}")));
     }
 
