@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../../core/api/api-error';
 import { applyServerErrors, controlError } from '../../../core/api/form-errors';
+import { FILE_TYPE_CATALOG } from '../../attachments/attachments.models';
 import { AdminApi } from '../admin.api';
 
 @Component({
@@ -61,6 +62,33 @@ import { AdminApi } from '../admin.api';
         </form>
       </mat-card-content>
     </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Attachments</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="fileForm" (ngSubmit)="saveFiles()" novalidate>
+          @for (field of sizeFields; track field.name) {
+            <mat-form-field>
+              <mat-label>{{ field.label }}</mat-label>
+              <input matInput type="number" [formControlName]="field.name" min="1" [max]="field.max" required />
+              <mat-hint>1–{{ field.max }}</mat-hint>
+              <mat-error>{{ fileError(field.name, field.label) }}</mat-error>
+            </mat-form-field>
+          }
+          <fieldset>
+            <legend>Allowed file types</legend>
+            @for (type of fileTypes; track type.code) {
+              <mat-checkbox [checked]="allowed().has(type.code)" (change)="toggleType(type.code, $event.checked)">{{ type.label }}</mat-checkbox>
+            }
+            <p class="hint">SVG and HTML files are never allowed. Files are checked by their content, not their name.</p>
+          </fieldset>
+          @if (fileFailure(); as message) {
+            <p class="error" role="alert">{{ message }}</p>
+          }
+          <button mat-flat-button type="submit" [disabled]="busy()">Save</button>
+        </form>
+      </mat-card-content>
+    </mat-card>
   `,
   styles: `
     mat-card {
@@ -74,6 +102,17 @@ import { AdminApi } from '../admin.api';
     }
     button {
       align-self: flex-start;
+    }
+    fieldset {
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 4px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .hint {
+      grid-column: 1 / -1;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
     }
     .error {
       color: var(--mat-sys-error);
@@ -109,11 +148,27 @@ export class Settings implements OnInit {
     pauseReasonRequired: [false],
   });
 
+  protected readonly fileTypes = FILE_TYPE_CATALOG;
+  protected readonly sizeFields = [
+    { name: 'imageMaxMb', label: 'Largest image (MB)', max: 100 },
+    { name: 'documentMaxMb', label: 'Largest document (MB)', max: 500 },
+    { name: 'videoMaxMb', label: 'Largest video (MB)', max: 1024 },
+  ] as const;
+  protected readonly fileFailure = signal<string | null>(null);
+  protected readonly allowed = signal(new Set<string>());
+  protected readonly fileForm = inject(NonNullableFormBuilder).group({
+    imageMaxMb: [10, [Validators.required, Validators.min(1), Validators.max(100)]],
+    documentMaxMb: [25, [Validators.required, Validators.min(1), Validators.max(500)]],
+    videoMaxMb: [200, [Validators.required, Validators.min(1), Validators.max(1024)]],
+  });
+
   async ngOnInit(): Promise<void> {
     try {
       const settings = await firstValueFrom(this.api.settings());
       this.form.reset(settings.auth);
       this.workForm.reset(settings.work);
+      this.fileForm.reset(settings.attachments);
+      this.allowed.set(new Set(settings.attachments.allowedTypes));
     } catch (error) {
       this.failure.set(asApiError(error).message);
     }
@@ -125,6 +180,43 @@ export class Settings implements OnInit {
 
   protected workError(name: keyof typeof this.workForm.controls, label: string): string | null {
     return controlError(this.workForm.controls[name], label);
+  }
+
+  protected fileError(name: keyof typeof this.fileForm.controls, label: string): string | null {
+    return controlError(this.fileForm.controls[name], label);
+  }
+
+  protected toggleType(code: string, checked: boolean): void {
+    this.allowed.update((set) => {
+      const next = new Set(set);
+      if (checked) next.add(code);
+      else next.delete(code);
+      return next;
+    });
+  }
+
+  protected async saveFiles(): Promise<void> {
+    if (this.fileForm.invalid) {
+      this.fileForm.markAllAsTouched();
+      return;
+    }
+    this.busy.set(true);
+    this.fileFailure.set(null);
+    try {
+      const saved = await firstValueFrom(
+        this.api.updateAttachmentSettings({ ...this.fileForm.getRawValue(), allowedTypes: this.fileTypes.map((t) => t.code).filter((c) => this.allowed().has(c)) }),
+      );
+      this.fileForm.reset(saved);
+      this.allowed.set(new Set(saved.allowedTypes));
+      this.snackBar.open('Settings saved.', undefined, { duration: 3000 });
+    } catch (error) {
+      const apiError = asApiError(error);
+      if (applyServerErrors(this.fileForm, apiError).length || !Object.keys(apiError.fieldErrors).length) {
+        this.fileFailure.set(apiError.message);
+      }
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected async saveWork(): Promise<void> {

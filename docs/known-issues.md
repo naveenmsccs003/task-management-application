@@ -1,10 +1,10 @@
 # Known Issues, Risks and Open Decisions
 
-Last updated: 2026-10-17 (Phase 8)
+Last updated: 2026-10-17 (Phase 9)
 
 ## Open decisions
 
-None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phases 4–7 (authentication and administration; projects, tasks, comments; algorithms, checklists, work sessions, time; notifications) approved 2026-10-17. Phase 8 is awaiting approval.
+None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phases 4–8 (authentication and administration; projects, tasks, comments; algorithms, checklists, work sessions, time; notifications; review, requests, delays, overdue) approved 2026-10-17. Phase 9 is awaiting approval.
 
 ## Environment notes (development machine)
 
@@ -40,7 +40,7 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L19 | ~~On a heavily loaded machine the "Add member" form could be submitted before its role list had loaded.~~ **Resolved in Phase 6:** the button stays disabled until the form has loaded. | — |
 | L20 | ~~No notifications for algorithm events, allocated-hour thresholds or auto-closed sessions.~~ **Resolved in Phase 7.** | — |
 | L21 | ~~Review, the mandatory-checklist check (AC-CHK-1), reopening checklist items (FR-CHK-06) and algorithm re-approval (FR-ALG-06) were not available.~~ **Resolved in Phase 8.** | — |
-| L22 | Algorithm submissions take text only; attachments (FR-ALG-02) come with the attachments phase. | Phase 9. |
+| L22 | ~~Algorithm submissions took text only.~~ **Resolved in Phase 9:** files can be attached to algorithms, reviews, comments and tasks (FR-ALG-02, FR-ATT-01). | — |
 | L23 | Timesheets and time reports by member, project and date range (FR-TIME-10) are not available; the task page shows per-task time only. | Phase 11. |
 | L24 | `Idempotency-Key` is honoured on the four work actions; create endpoints do not use it yet (repeated creates are prevented by the UI disabling buttons while saving). | Hardening (Phase 12). |
 | L25 | The background jobs run on every app instance. If two instances close the same session at once, the second save hits the task's concurrency check, is recorded as a failed run on the System status page, and the next run finds nothing to do — no double close or double notification. | A database lock could make them single-runner if this becomes noisy. |
@@ -50,6 +50,12 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L29 | Audit log retention (FR-AUD-06) is a DBA script, not an in-app setting, because the application role can never delete audit rows (FR-AUD-03). | By design. |
 | L30 | Fixed in Phase 7: the end-to-end suite assumed a warm Angular dev server; from a cold start (as in CI) the first pages can take over ten seconds to compile, so Phase 5/6 CI runs may have needed their retry. Waits are now 20 s and the first journey is marked slow. The test helper that flushes emails also now drains the whole queue instead of one batch of 20. | Resolved. |
 | L31 | The due-date job runs hourly rather than once a day so each assignee's local midnight is picked up within an hour; the "once per day" overdue notice is per the assignee's local date. Like the other jobs it runs on every instance (see L25). | None needed. |
+| L32 | Uploaded files are stored on a local disk or mounted volume (`Attachments:LocalPath`) only. The S3-compatible / Azure Blob provider (A10) and short-lived signed download URLs are not built yet, so every download streams through the API, and several app instances need one shared volume. | Deployment (Phase 12), together with MinIO in `compose.yaml`. |
+| L33 | ClamAV's default stream limits are smaller than the 200 MB video limit. A file larger than clamd's `StreamMaxLength` / `MaxFileSize` / `MaxScanSize` cannot be scanned and ends as "could not be checked" (not downloadable). The limits must be raised in clamd's configuration (deployment.md §5). | Configuration, documented. |
+| L34 | The ClamAV client was tested against a fake clamd that speaks the INSTREAM protocol, not a real ClamAV (no Docker here); integration tests use a fake scanner. | Run once against real ClamAV in the Testing environment before production. |
+| L35 | The uploader is not notified when a file is found infected or cannot be scanned; the file shows "Blocked" on the task page and an `attachment.infected` audit entry is written. | Revisit if users ask. |
+| L36 | Files can be attached to a comment only when it is posted (not by editing it later), and to an algorithm or review only when it is submitted, because those records are immutable once saved. | By design. |
+| L37 | Image and video previews are not audited (a video player requests many ranges of one file); downloads are. Plain-text files are recognized from their first 8 KB. | By design. |
 | L18 | Fixed in Phase 5: the e2e mail helper decoded every email as quoted-printable, which corrupted links whose token started with two hex characters (`?token=9B…`), and two e2e steps could type into a list page's search box before the form page appeared. Both caused occasional false failures. | Resolved. |
 
 ## Risks

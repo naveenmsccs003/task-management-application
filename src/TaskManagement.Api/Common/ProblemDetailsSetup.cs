@@ -25,6 +25,8 @@ internal static class ProblemDetailsSetup
         ErrorType.Forbidden => StatusCodes.Status403Forbidden,
         ErrorType.NotFound => StatusCodes.Status404NotFound,
         ErrorType.Conflict => StatusCodes.Status409Conflict,
+        ErrorType.TooLarge => StatusCodes.Status413PayloadTooLarge,
+        ErrorType.UnsupportedMediaType => StatusCodes.Status415UnsupportedMediaType,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown error type."),
     };
 

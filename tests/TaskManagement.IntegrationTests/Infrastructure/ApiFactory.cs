@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Identity;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Infrastructure.Email;
+using TaskManagement.Infrastructure.Files;
 using TaskManagement.Infrastructure.Persistence;
 
 namespace TaskManagement.IntegrationTests.Infrastructure;
@@ -26,6 +28,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         ?? throw new InvalidOperationException("The database has not been started yet.");
 
     public FakeEmailTransport Emails { get; } = new();
+
+    /// <summary>Private file storage for this host; removed when the host is disposed.</summary>
+    public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"tma-files-{Guid.NewGuid():N}");
 
     /// <summary>Optional test-specific service replacements, applied after the app's own registrations.</summary>
     public Action<IServiceCollection>? ConfigureServices { get; init; }
@@ -61,6 +66,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Jobs:SessionMonitorEnabled", "false"); // tests run the monitor explicitly
         builder.UseSetting("Jobs:CleanupEnabled", "false");
         builder.UseSetting("Jobs:DueDatesEnabled", "false");
+        builder.UseSetting("Attachments:LocalPath", StoragePath);
+        builder.UseSetting("Attachments:ScanWorkerEnabled", "false"); // tests call ScanAttachmentsAsync instead
+        builder.UseSetting("Attachments:UploadsPerMinute", "10000");
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);
@@ -70,6 +78,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             services.RemoveAll<IEmailTransport>();
             services.AddSingleton<IEmailTransport>(Emails);
+            services.RemoveAll<IMalwareScanner>();
+            services.AddSingleton<IMalwareScanner, FakeMalwareScanner>();
             ConfigureServices?.Invoke(services);
         });
     }
@@ -113,6 +123,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
     }
 
+    /// <summary>Runs the malware-scan job until nothing is pending.</summary>
+    public Task<int> ScanAttachmentsAsync() => Services.GetRequiredService<AttachmentScanWorker>().RunOnceAsync(CancellationToken.None);
+
     public async Task<T> WithDbAsync<T>(Func<AppDbContext, Task<T>> action)
     {
         ArgumentNullException.ThrowIfNull(action);
@@ -126,6 +139,11 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         if (_database is not null)
         {
             await _database.DisposeAsync();
+        }
+
+        if (Directory.Exists(StoragePath))
+        {
+            Directory.Delete(StoragePath, recursive: true);
         }
 
         GC.SuppressFinalize(this);

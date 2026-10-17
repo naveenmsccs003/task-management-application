@@ -2,7 +2,7 @@
 
 A role-based task management application with project and task workflows, algorithm approval, work-session time tracking, checklists, TL review, attachments, deadline and reassignment approvals, GitLab issue import, reports and audit logs.
 
-**Current status: Phases 1–7 approved. Phase 8 — review, closure and reopening, revisions, reassignment and deadline-extension requests with an approvals queue, delay reports, and the due-date job (Overdue flag, due-soon and overdue notifications) (awaiting approval). MFA for Admins is a separate follow-up step before production. Attachments come in Phase 9.**
+**Current status: Phases 1–8 approved. Phase 9 — attachments on tasks, comments, algorithms and reviews: private storage, content-signature checks, malware scanning with ClamAV, safe downloads and previews, and Admin-editable type and size limits (awaiting approval). MFA for Admins is a separate follow-up step before production. GitLab import comes in Phase 10.**
 
 ## Planned technology
 
@@ -43,8 +43,8 @@ Each phase ends with builds, tests, a report, and an approval checkpoint.
 5. **Projects, tasks, assignments, comments** — approved.
 6. **Algorithm approval, checklists, work sessions, allocated hours** — approved.
 7. **Notifications (in-app, email, background jobs)** — approved.
-8. **Review, closure, revisions, reassignment, deadline extensions, delay reports** — current phase.
-9. **Attachments (private storage).**
+8. **Review, closure, revisions, reassignment, deadline extensions, delay reports** — approved.
+9. **Attachments (private storage)** — current phase.
 10. **GitLab import.**
 11. **Dashboards and reports.**
 12. **Hardening** — security review, end-to-end tests, performance checks, deployment documentation.

@@ -11,6 +11,8 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
 import { ActiveSessionService } from '../../core/work/active-session.service';
+import { TaskAttachments } from '../attachments/task-attachments';
+import { TaskAttachmentsStore } from '../attachments/task-attachments.store';
 import { ProjectsApi } from '../projects/projects.api';
 import { ProjectMember } from '../projects/projects.models';
 import { TaskAlgorithm } from './task-algorithm';
@@ -30,8 +32,9 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
   selector: 'app-task-detail',
   imports: [
     DatePipe, FormsModule, RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, TaskAlgorithm, TaskChecklist, TaskComments, TaskDelays, TaskRequests, TaskReview, TaskTimePanel,
+    MatSelectModule, TaskAlgorithm, TaskAttachments, TaskChecklist, TaskComments, TaskDelays, TaskRequests, TaskReview, TaskTimePanel,
   ],
+  providers: [TaskAttachmentsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (failure(); as message) {
@@ -223,6 +226,9 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
       </mat-card>
 
       <section class="columns">
+        <div>
+          <app-task-attachments [taskId]="t.id" [canAttach]="can('attach')" />
+        </div>
         @if (t.algorithmRequired && t.canViewAlgorithm && t.status !== 'Draft') {
           <div>
             <app-task-algorithm [task]="t" (changed)="apply($event)" />
@@ -365,6 +371,7 @@ export class TaskDetail implements OnInit {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly activeSession = inject(ActiveSessionService);
+  private readonly attachments = inject(TaskAttachmentsStore);
 
   /** Route parameter. */
   readonly id = input.required<string>();
@@ -388,7 +395,7 @@ export class TaskDetail implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.run(async () => {
       this.task.set(await firstValueFrom(this.tasksApi.get(this.id())));
-      await this.loadHistory();
+      await Promise.all([this.loadHistory(), this.attachments.load(this.id())]);
     });
   }
 

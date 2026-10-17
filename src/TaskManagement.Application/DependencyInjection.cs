@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using TaskManagement.Application.Access;
 using TaskManagement.Application.Algorithms;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
@@ -78,6 +79,10 @@ public static class DependencyInjection
         services.AddScoped<RequestService>();
         services.AddScoped<DelayService>();
         services.AddScoped<DueDateMonitor>();
+
+        // Attachments
+        services.AddScoped<AttachmentService>();
+        services.AddScoped<AttachmentScanning>();
 
         return services;
     }

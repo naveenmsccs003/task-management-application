@@ -8,7 +8,7 @@ using TaskManagement.Domain.Settings;
 
 namespace TaskManagement.Application.Settings;
 
-public sealed record SettingsDto(AuthSettings Auth, WorkSettings Work);
+public sealed record SettingsDto(AuthSettings Auth, WorkSettings Work, AttachmentSettings Attachments);
 
 /// <summary>
 /// Typed, cached access to global settings. Values are read at the moment they are used (e.g. during sign-in),
@@ -35,8 +35,38 @@ public sealed class SettingsService(IAppDbContext db, IMemoryCache cache, IAudit
             return row is null ? new WorkSettings() : JsonSerializer.Deserialize<WorkSettings>(row.ValueJson, JsonOptions) ?? new WorkSettings();
         }) ?? new WorkSettings();
 
+    public async Task<AttachmentSettings> GetAttachmentsAsync(CancellationToken cancellationToken) =>
+        await cache.GetOrCreateAsync(CacheKey(AttachmentSettings.Key), async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            var row = await db.GlobalSettings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == AttachmentSettings.Key, cancellationToken);
+            return row is null ? new AttachmentSettings() : JsonSerializer.Deserialize<AttachmentSettings>(row.ValueJson, JsonOptions) ?? new AttachmentSettings();
+        }) ?? new AttachmentSettings();
+
     public async Task<SettingsDto> GetAllAsync(CancellationToken cancellationToken) =>
-        new(await GetAuthAsync(cancellationToken), await GetWorkAsync(cancellationToken));
+        new(await GetAuthAsync(cancellationToken), await GetWorkAsync(cancellationToken), await GetAttachmentsAsync(cancellationToken));
+
+    public async Task<Result<AttachmentSettings>> UpdateAttachmentsAsync(AttachmentSettings settings, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var errors = settings.Validate();
+        if (errors.HasErrors)
+        {
+            return errors.ToError();
+        }
+
+        settings = settings with { AllowedTypes = settings.AllowedTypes.Distinct().ToList() };
+        var previous = await GetAttachmentsAsync(cancellationToken);
+        await SaveAsync(AttachmentSettings.Key, JsonSerializer.Serialize(settings, JsonOptions), cancellationToken);
+        auditLog.Record("settings.updated", "Setting", AttachmentSettings.Key, new AuditChanges()
+            .Change("imageMaxMb", previous.ImageMaxMb, settings.ImageMaxMb)
+            .Change("documentMaxMb", previous.DocumentMaxMb, settings.DocumentMaxMb)
+            .Change("videoMaxMb", previous.VideoMaxMb, settings.VideoMaxMb)
+            .Change("allowedTypes", string.Join(",", previous.AllowedTypes), string.Join(",", settings.AllowedTypes)));
+        await db.SaveChangesAsync(cancellationToken);
+        cache.Remove(CacheKey(AttachmentSettings.Key));
+        return settings;
+    }
 
     public async Task<Result<WorkSettings>> UpdateWorkAsync(WorkSettings settings, CancellationToken cancellationToken)
     {

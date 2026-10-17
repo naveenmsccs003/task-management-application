@@ -26,5 +26,17 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  clamav:
+    # Malware scanning for uploads (Q9). Optional in development, where Attachments:Scanner defaults to None.
+    # Start with: docker compose --profile scan up -d   — then set Attachments__Scanner=ClamAv. First start downloads
+    # signatures and takes a few minutes.
+    image: clamav/clamav:1.4.3
+    profiles: ["scan"]
+    ports:
+      - "127.0.0.1:3310:3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+
 volumes:
   postgres-data:
+  clamav-data:

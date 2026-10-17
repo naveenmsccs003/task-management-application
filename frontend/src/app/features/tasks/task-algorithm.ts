@@ -6,13 +6,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
+import { AttachmentList } from '../attachments/attachment-list';
+import { AttachmentPicker } from '../attachments/attachment-picker';
+import { Attachment } from '../attachments/attachments.models';
+import { TaskAttachmentsStore } from '../attachments/task-attachments.store';
 import { TasksApi } from './tasks.api';
 import { AlgorithmSubmission, Task } from './tasks.models';
 
 /** Algorithm versions with submit (assignee) and approve/reject (Team Leader) (FR-ALG-01..05). */
 @Component({
   selector: 'app-task-algorithm',
-  imports: [DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [AttachmentList, AttachmentPicker, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2>Algorithm</h2>
@@ -36,6 +40,7 @@ import { AlgorithmSubmission, Task } from './tasks.models';
           <textarea matInput name="content" [(ngModel)]="content" rows="6" maxlength="50000"></textarea>
           <mat-hint>Describe the approach step by step. Submitted versions cannot be edited.</mat-hint>
         </mat-form-field>
+        <app-attachment-picker [taskId]="task().id" ownerType="Algorithm" label="Attach a file to the algorithm" [(drafts)]="drafts" />
         <button mat-flat-button type="submit" [disabled]="busy() || !content.trim()">Submit algorithm</button>
       </form>
     }
@@ -49,6 +54,7 @@ import { AlgorithmSubmission, Task } from './tasks.models';
             <span class="decision" [class]="s.decision.toLowerCase()">{{ s.decision }}</span>
           </div>
           <pre class="content">{{ s.content }}</pre>
+          <app-attachment-list [attachments]="filesOf(s.id)" label="Algorithm files" />
           @if (s.decidedBy) {
             <p class="muted">{{ s.decision }} by {{ s.decidedBy.name }} · {{ s.decidedAt | date: 'medium' }}</p>
           }
@@ -116,6 +122,7 @@ import { AlgorithmSubmission, Task } from './tasks.models';
 })
 export class TaskAlgorithm implements OnInit {
   private readonly api = inject(TasksApi);
+  private readonly files = inject(TaskAttachmentsStore, { optional: true });
 
   readonly task = input.required<Task>();
   /** The task after a submit or decision, so the page can update its state and buttons. */
@@ -126,6 +133,7 @@ export class TaskAlgorithm implements OnInit {
   protected readonly failure = signal<string | null>(null);
   protected readonly canSubmit = computed(() => this.task().allowedActions.includes('submitAlgorithm'));
   protected readonly canReview = computed(() => this.task().allowedActions.includes('reviewAlgorithm'));
+  protected readonly drafts = signal<Attachment[]>([]);
   protected content = '';
   protected comment = '';
 
@@ -133,10 +141,17 @@ export class TaskAlgorithm implements OnInit {
     await this.run(async () => this.submissions.set(await firstValueFrom(this.api.algorithms(this.task().id))));
   }
 
+  protected filesOf(submissionId: string): Attachment[] {
+    return this.files?.forOwner('Algorithm', submissionId) ?? [];
+  }
+
   protected async submit(): Promise<void> {
     await this.run(async () => {
-      this.changed.emit(await firstValueFrom(this.api.submitAlgorithm(this.task().id, this.content)));
+      const ids = this.drafts().map((d) => d.id);
+      this.changed.emit(await firstValueFrom(this.api.submitAlgorithm(this.task().id, this.content, ids)));
       this.content = '';
+      this.drafts.set([]);
+      if (ids.length) await this.files?.changed();
       this.submissions.set(await firstValueFrom(this.api.algorithms(this.task().id)));
     });
   }

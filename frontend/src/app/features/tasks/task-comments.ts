@@ -6,13 +6,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
+import { AttachmentList } from '../attachments/attachment-list';
+import { AttachmentPicker } from '../attachments/attachment-picker';
+import { Attachment } from '../attachments/attachments.models';
+import { TaskAttachmentsStore } from '../attachments/task-attachments.store';
 import { TasksApi } from './tasks.api';
 import { TaskComment } from './tasks.models';
 
 /** Comments on a task (FR-TASK-08). Edit and delete buttons follow the server's canEdit / canDelete flags. */
 @Component({
   selector: 'app-task-comments',
-  imports: [DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [AttachmentList, AttachmentPicker, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2>Comments</h2>
@@ -42,6 +46,7 @@ import { TaskComment } from './tasks.models';
             </form>
           } @else {
             <p class="body">{{ c.body }}</p>
+            <app-attachment-list [attachments]="filesOf(c.id)" label="Comment files" />
             <div class="row-actions">
               @if (c.canEdit) {
                 <button mat-button type="button" (click)="startEdit(c)">Edit</button>
@@ -63,6 +68,7 @@ import { TaskComment } from './tasks.models';
           <mat-label>Add a comment</mat-label>
           <textarea matInput name="newBody" [(ngModel)]="newBody" rows="3" maxlength="10000"></textarea>
         </mat-form-field>
+        <app-attachment-picker [taskId]="taskId()" ownerType="Comment" label="Attach a file to the comment" [(drafts)]="drafts" />
         <button mat-flat-button type="submit" [disabled]="busy() || !newBody.trim()">Post comment</button>
       </form>
     }
@@ -101,6 +107,7 @@ import { TaskComment } from './tasks.models';
 })
 export class TaskComments implements OnInit {
   private readonly api = inject(TasksApi);
+  private readonly files = inject(TaskAttachmentsStore, { optional: true });
 
   readonly taskId = input.required<string>();
   readonly canComment = input(false);
@@ -109,11 +116,16 @@ export class TaskComments implements OnInit {
   protected readonly editingId = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly failure = signal<string | null>(null);
+  protected readonly drafts = signal<Attachment[]>([]);
   protected newBody = '';
   protected editBody = '';
 
   async ngOnInit(): Promise<void> {
     await this.run(async () => this.comments.set(await firstValueFrom(this.api.comments(this.taskId()))));
+  }
+
+  protected filesOf(commentId: string): Attachment[] {
+    return this.files?.forOwner('Comment', commentId) ?? [];
   }
 
   protected startEdit(comment: TaskComment): void {
@@ -123,9 +135,12 @@ export class TaskComments implements OnInit {
 
   protected async add(): Promise<void> {
     await this.run(async () => {
-      const created = await firstValueFrom(this.api.addComment(this.taskId(), this.newBody));
+      const ids = this.drafts().map((d) => d.id);
+      const created = await firstValueFrom(this.api.addComment(this.taskId(), this.newBody, ids));
       this.comments.update((list) => [...list, created]);
       this.newBody = '';
+      this.drafts.set([]);
+      if (ids.length) await this.files?.changed();
     });
   }
 
@@ -141,6 +156,7 @@ export class TaskComments implements OnInit {
     await this.run(async () => {
       await firstValueFrom(this.api.deleteComment(this.taskId(), comment.id));
       this.comments.set(await firstValueFrom(this.api.comments(this.taskId())));
+      await this.files?.changed();
     });
   }
 

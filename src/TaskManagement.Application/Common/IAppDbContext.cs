@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
 using TaskManagement.Domain.Checklists;
+using TaskManagement.Domain.Files;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Operations;
@@ -70,6 +71,8 @@ public interface IAppDbContext
     DbSet<ApprovalRequest> ApprovalRequests { get; }
 
     DbSet<DelayReport> DelayReports { get; }
+
+    DbSet<Attachment> Attachments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

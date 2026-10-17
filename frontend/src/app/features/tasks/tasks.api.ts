@@ -68,8 +68,8 @@ export class TasksApi {
     return this.http.get<AlgorithmSubmission[]>(`/api/v1/tasks/${id}/algorithm`);
   }
 
-  submitAlgorithm(id: string, content: string): Observable<Task> {
-    return this.http.post<Task>(`/api/v1/tasks/${id}/algorithm`, { content });
+  submitAlgorithm(id: string, content: string, attachmentIds: string[] = []): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/algorithm`, { content, attachmentIds });
   }
 
   decideAlgorithm(id: string, submissionId: string, decision: 'approve' | 'reject', comment: string | null): Observable<Task> {
@@ -98,8 +98,8 @@ export class TasksApi {
     return this.http.post<TaskTime>(`/api/v1/tasks/${id}/time-adjustments`, { userId, minutes, reason });
   }
 
-  submitReview(id: string, summary: string): Observable<Task> {
-    return this.http.post<Task>(`/api/v1/tasks/${id}/submit-review`, { summary });
+  submitReview(id: string, summary: string, attachmentIds: string[] = []): Observable<Task> {
+    return this.http.post<Task>(`/api/v1/tasks/${id}/submit-review`, { summary, attachmentIds });
   }
 
   approveReview(id: string, comment: string | null): Observable<Task> {
@@ -163,8 +163,8 @@ export class TasksApi {
     return this.http.get<TaskComment[]>(`/api/v1/tasks/${id}/comments`);
   }
 
-  addComment(id: string, body: string): Observable<TaskComment> {
-    return this.http.post<TaskComment>(`/api/v1/tasks/${id}/comments`, { body });
+  addComment(id: string, body: string, attachmentIds: string[] = []): Observable<TaskComment> {
+    return this.http.post<TaskComment>(`/api/v1/tasks/${id}/comments`, { body, attachmentIds });
   }
 
   editComment(id: string, commentId: string, body: string): Observable<TaskComment> {

@@ -354,6 +354,131 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("task_checklist_items", "tasks");
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.Files.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("FileType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("file_type");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_file_name");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("OwnerType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("owner_type");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<int>("ScanAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("scan_attempts");
+
+                    b.Property<string>("ScanStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("scan_status");
+
+                    b.Property<DateTimeOffset?>("ScannedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scanned_at");
+
+                    b.Property<byte[]>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("sha256");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_attachments");
+
+                    b.HasIndex("DeletedBy")
+                        .HasDatabaseName("ix_attachments_deleted_by");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_attachments_project_id");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_attachments_storage_key");
+
+                    b.HasIndex("UploadedAt")
+                        .HasDatabaseName("ix_attachments_drafts")
+                        .HasFilter("owner_id IS NULL");
+
+                    b.HasIndex("UploadedBy")
+                        .HasDatabaseName("ix_attachments_uploaded_by");
+
+                    b.HasIndex("OwnerType", "OwnerId")
+                        .HasDatabaseName("ix_attachments_owner_type_owner_id");
+
+                    b.HasIndex("TaskId", "UploadedAt")
+                        .HasDatabaseName("ix_attachments_task_id_uploaded_at");
+
+                    b.ToTable("attachments", "files", t =>
+                        {
+                            t.HasCheckConstraint("ck_attachments_owner_type", "owner_type IN ('Task', 'Comment', 'Algorithm', 'Review')");
+
+                            t.HasCheckConstraint("ck_attachments_scan_status", "scan_status IN ('Pending', 'Clean', 'Infected', 'Failed')");
+
+                            t.HasCheckConstraint("ck_attachments_size", "size_bytes > 0");
+                        });
+                });
+
             modelBuilder.Entity("TaskManagement.Domain.Identity.PasswordToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1862,6 +1987,36 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_task_checklist_items_tasks_task_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Files.Attachment", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("DeletedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_attachments_users_deleted_by");
+
+                    b.HasOne("TaskManagement.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_projects_project_id");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_tasks_task_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_users_uploaded_by");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Identity.PasswordToken", b =>

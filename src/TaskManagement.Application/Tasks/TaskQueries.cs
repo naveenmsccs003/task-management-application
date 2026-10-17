@@ -256,6 +256,12 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
             actions.Add("comment");
         }
 
+        // Files on the task itself; comment, algorithm and review files follow those actions (FR-ATT-01).
+        if (visible.Allows(PermissionCatalog.AttachmentsUpload))
+        {
+            actions.Add("attach");
+        }
+
         // The assignee's own actions (FR-WORK-01, FR-ALG-01, FR-CHK-04).
         if (visible.IsAssignee)
         {

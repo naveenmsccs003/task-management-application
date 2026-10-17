@@ -46,6 +46,8 @@ public static class PermissionCatalog
     public const string ReassignmentsApprove = "reassignments.approve";
     public const string DelaysReport = "delays.report";
     public const string DelaysView = "delays.view";
+    public const string AttachmentsUpload = "attachments.upload";
+    public const string AttachmentsDelete = "attachments.delete";
     public const string SystemHealth = "system.health";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
@@ -126,8 +128,8 @@ public static class PermissionCatalog
         new(DelaysView, "Requests", "View delay reports", G, P, P, O, null),
 
         // Attachments (viewing follows the parent record's permission)
-        new("attachments.upload", "Attachments", "Upload attachments", null, P, P, O, null),
-        new("attachments.delete", "Attachments", "Delete attachments", null, P, P, O, null),
+        new(AttachmentsUpload, "Attachments", "Upload attachments", null, P, P, O, null),
+        new(AttachmentsDelete, "Attachments", "Delete attachments", null, P, P, O, null),
 
         // Notifications, reports, audit, integration, administration
         new(NotificationsView, "Notifications", "View own notifications", O, O, O, O, O),

@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Notifications;
 using TaskManagement.Application.Tasks;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
+using TaskManagement.Domain.Files;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Tasks;
@@ -23,7 +25,8 @@ public sealed record AlgorithmSubmissionDto(
     DateTimeOffset? DecidedAt,
     string? DecisionComment);
 
-public sealed record SubmitAlgorithmCommand(string? Content);
+/// <summary><paramref name="AttachmentIds"/>: the caller's draft files uploaded with owner type Algorithm (FR-ALG-02).</summary>
+public sealed record SubmitAlgorithmCommand(string? Content, IReadOnlyList<Guid>? AttachmentIds = null);
 
 public sealed record AlgorithmDecisionCommand(string? Comment);
 
@@ -32,7 +35,8 @@ public sealed record AlgorithmDecisionCommand(string? Comment);
 /// kept. Nobody decides on their own algorithm, and a TL who is the assignee cannot approve it either (AC-ALG-3).
 /// </summary>
 public sealed class AlgorithmService(
-    IAppDbContext db, TaskAccess access, TaskQueries queries, Notifier notifier, IAuditLog auditLog, TimeProvider timeProvider)
+    IAppDbContext db, TaskAccess access, TaskQueries queries, AttachmentService attachments, Notifier notifier, IAuditLog auditLog,
+    TimeProvider timeProvider)
 {
     public async Task<Result<IReadOnlyList<AlgorithmSubmissionDto>>> ListAsync(Guid taskId, CancellationToken cancellationToken)
     {
@@ -106,6 +110,12 @@ public sealed class AlgorithmService(
         var version = await db.AlgorithmSubmissions.Where(a => a.TaskId == taskId).MaxAsync(a => (int?)a.Version, cancellationToken) ?? 0;
         var submission = AlgorithmSubmission.Create(taskId, task.CurrentRevision, version + 1, command.Content!, visible.UserId, now);
         db.AlgorithmSubmissions.Add(submission);
+        var linked = await attachments.LinkDraftsAsync(taskId, AttachmentOwnerType.Algorithm, submission.Id, command.AttachmentIds, visible.UserId, cancellationToken);
+        if (linked.IsFailure)
+        {
+            return linked.Error!;
+        }
+
         await notifier.NotifyAsync(
             await notifier.ProjectLeadsAsync(task.ProjectId, cancellationToken), NotificationType.AlgorithmSubmitted,
             $"Algorithm submitted for {task.Key}", $"Version {submission.Version} of the algorithm for “{task.Title}” is waiting for review.",

@@ -256,6 +256,8 @@ Index: (task_id, revision); (user_id, started_at) for timesheets.
 | uploaded_by, uploaded_at | | |
 | deleted_at, deleted_by | | soft delete |
 
+*Phase 9 implementation notes:* `owner_id` is null while a comment, algorithm or review file is a draft (see api-design.md §4.9); `file_type` holds the detected type code; `scan_attempts` and `scanned_at` support retries (Failed after 5 attempts). Indexes: unique `storage_key`; (task_id, uploaded_at); (owner_type, owner_id); partial indexes on uploaded_at for `scan_status = 'Pending'` and for drafts. An infected file's bytes are removed from storage at once; its row stays. Soft-deleted files keep their bytes. Storage keys look like `2026/10/<32 hex>` and contain no user input.
+
 ### 3.9 `gitlab`
 
 **`connections`**: id, name, base_url, token_ciphertext (bytea, Data Protection encrypted), token_hint (last 4 characters), status (`Healthy` / `Unhealthy`), last_checked_at, last_error. The token is never selected into API responses (separate query model).

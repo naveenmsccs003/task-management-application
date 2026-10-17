@@ -10,4 +10,10 @@ public enum ErrorType
     Forbidden,
     NotFound,
     Conflict,
+
+    /// <summary>An upload larger than the limit for its file type (HTTP 413).</summary>
+    TooLarge,
+
+    /// <summary>An upload whose file type is not allowed (HTTP 415).</summary>
+    UnsupportedMediaType,
 }

@@ -1,11 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Notifications;
 
 namespace TaskManagement.Infrastructure.Jobs;
 
-/// <summary>Runs <see cref="RetentionCleanup"/> every hour and records the run for the system status page.</summary>
+/// <summary>
+/// Runs <see cref="RetentionCleanup"/> and the removal of unused attachment drafts every hour, and records the run for the
+/// system status page.
+/// </summary>
 public sealed partial class CleanupWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<CleanupWorker> logger)
     : BackgroundService
 {
@@ -32,8 +36,13 @@ public sealed partial class CleanupWorker(IServiceScopeFactory scopeFactory, Tim
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var cleanup = scope.ServiceProvider.GetRequiredService<RetentionCleanup>();
+        var attachments = scope.ServiceProvider.GetRequiredService<AttachmentScanning>();
         return await scope.ServiceProvider.GetRequiredService<JobRecorder>()
-            .RunAsync(JobRecorder.Cleanup, () => cleanup.RunOnceAsync(cancellationToken), removed => $"{removed} old rows removed", cancellationToken);
+            .RunAsync(
+                JobRecorder.Cleanup,
+                async () => await cleanup.RunOnceAsync(cancellationToken) + await attachments.RemoveStaleDraftsAsync(cancellationToken),
+                removed => $"{removed} old rows removed",
+                cancellationToken);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The clean-up run failed.")]

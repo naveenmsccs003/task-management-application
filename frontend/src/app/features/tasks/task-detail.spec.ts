@@ -53,7 +53,10 @@ describe('TaskDetail', () => {
     backend = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    backend.match('/api/v1/attachment-rules').forEach((r) => r.flush({ allowedTypes: [{ code: 'pdf', category: 'Document', extensions: ['.pdf'], maxBytes: 1048576 }], maxFilesPerRecord: 10 }));
+    backend.verify();
+  });
 
   async function render(value: Task) {
     const fixture = TestBed.createComponent(TaskDetail);
@@ -78,6 +81,7 @@ describe('TaskDetail', () => {
     backend.match('/api/v1/tasks/t1/reviews').forEach((r) => r.flush([]));
     backend.match('/api/v1/tasks/t1/requests').forEach((r) => r.flush([]));
     backend.match('/api/v1/tasks/t1/delay-reports').forEach((r) => r.flush([]));
+    backend.match('/api/v1/tasks/t1/attachments').forEach((r) => r.flush([]));
   }
 
   function buttons(element: HTMLElement): string[] {

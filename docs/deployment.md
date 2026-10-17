@@ -28,7 +28,7 @@ Last updated: 2026-10-17
 | PostgreSQL | 18 | Via `compose.yaml` or a local install |
 | Docker + Compose | Recent | Optional locally; needed for `compose.yaml` and Testcontainers |
 
-`compose.yaml` starts PostgreSQL 18 and Mailpit. MinIO and ClamAV are added with the attachments phase.
+`compose.yaml` starts PostgreSQL 18 and Mailpit; `docker compose --profile scan up -d` also starts ClamAV. In Development, uploaded files are stored in `storage/files/` (git-ignored) and are not malware-scanned (`Attachments:Scanner` = `None`, so they can be downloaded at once). To try scanning locally, start the `scan` profile and set `Attachments__Scanner=ClamAv`.
 
 ### Running locally
 
@@ -95,10 +95,15 @@ flowchart LR
    | `Email__SmtpUserName`, `Email__SmtpPassword` | SMTP credentials (secret) |
    | `DataProtection__KeysPath` | Protected volume for the keys that encrypt sign-in cookies; must survive restarts and be shared by all instances |
    | `DataProtection__CertificatePath`, `DataProtection__CertificatePassword` | Certificate that encrypts those keys at rest (password is a secret) |
+   | `Attachments__LocalPath` | Private folder or mounted volume for uploaded files, outside any web root, writable by the app user and backed up (§6). Required: the app refuses to start without it |
+   | `Attachments__Scanner` | `ClamAv` (default). `None` is refused in Production (Q9) |
+   | `Attachments__ClamAvHost`, `Attachments__ClamAvPort` | clamd address (default `localhost:3310`). clamd's `StreamMaxLength`, `MaxFileSize` and `MaxScanSize` must be at least the largest allowed upload (default video limit 200 MB); a larger file is marked "could not be checked" and cannot be downloaded |
+   | `Attachments__UploadsPerMinute` | Uploads per member per minute (default 30) |
 
 3. Run migration bundle as `tma_migrator`; the app connects as `tma_app`.
+   The reverse proxy must allow request bodies up to the largest upload limit (e.g. nginx `client_max_body_size 1025m`) and should not buffer them to disk twice (`proxy_request_buffering off`).
 4. Send the first Admin invite: `dotnet TaskManagement.Api.dll create-admin --email <email> --name "<full name>" [--time-zone <IANA id>]`. The link is emailed, never printed.
 
 ## 6. Backups
 
-See [database-design.md](database-design.md) §7. Restore is tested at least once per quarter and before the first production release.
+See [database-design.md](database-design.md) §7. Back up the `Attachments__LocalPath` volume together with the database: rows refer to files by their storage key. Restore is tested at least once per quarter and before the first production release.

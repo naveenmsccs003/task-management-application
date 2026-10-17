@@ -17,7 +17,7 @@ async function addMember(page: Page, email: string, name: string, role: string):
 }
 
 /**
- * Journey 2 (project, task, assignment, algorithm rejected then approved), journey 3 (work sessions, checklist, review
+ * Journey 2 (project, task, assignment, algorithm rejected then approved, comment and task files), journey 3 (work sessions, checklist, review
  * with a revision, approval and closure), journey 4 (deadline extension approved) and journey 5 (another developer gets
  * "not found" by URL).
  */
@@ -93,16 +93,28 @@ test('task lifecycle: setup, algorithm, work, review with revision, extension, c
   await expect(page.getByTestId('task-status')).toHaveText('Awaiting algorithm');
   await expect(page.getByRole('button', { name: 'Assign', exact: true })).toHaveCount(0);
   await page.getByLabel('Add a comment', { exact: true }).fill('Starting tomorrow morning.');
+  await page.getByLabel('Attach a file to the comment').setInputFiles({ name: 'plan.txt', mimeType: 'text/plain', buffer: Buffer.from('Day 1: form\nDay 2: tests\n') });
+  await expect(page.getByRole('list', { name: 'Files to attach' })).toContainText('plan.txt');
   await page.getByRole('button', { name: 'Post comment' }).click();
   await expect(page.getByText('Starting tomorrow morning.')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Comment files' }).getByRole('link', { name: 'plan.txt' })).toBeVisible();
+
+  // Phase 9: task files are checked by content (an executable named .pdf is refused) and listed once stored.
+  await page.getByLabel('Attach a file to the task').setInputFiles({ name: 'tool.pdf', mimeType: 'application/pdf', buffer: Buffer.from([0x4d, 0x5a, 0x90, 0, 3, 0]) });
+  await expect(page.getByRole('alert').filter({ hasText: 'is not a supported file type' })).toBeVisible();
+  await page.getByLabel('Attach a file to the task').setInputFiles({ name: 'mock-up.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\n%%EOF\n') });
+  await expect(page.getByRole('list', { name: 'Task files' }).getByRole('link', { name: 'mock-up.pdf' })).toBeVisible();
   await page.getByLabel('Your algorithm', { exact: true }).fill('1. Render the form\n2. Submit to the API');
   await page.getByRole('button', { name: 'Submit algorithm' }).click();
   await expect(page.getByTestId('task-status')).toHaveText('Algorithm submitted');
   await signOut(page);
 
-  // The TL rejects version 1 with a comment.
+  // The TL rejects version 1 with a comment, after downloading the developer's file.
   await signIn(page, tl.email, password);
   await page.goto(taskUrl);
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('list', { name: 'Task files' }).getByRole('link', { name: 'mock-up.pdf' }).click();
+  expect((await downloading).suggestedFilename()).toBe('mock-up.pdf');
   await page.getByLabel('Comment (required to reject)', { exact: true }).fill('Validate the email before submitting.');
   await page.getByRole('button', { name: 'Reject' }).click();
   await expect(page.getByTestId('task-status')).toHaveText('Awaiting algorithm');

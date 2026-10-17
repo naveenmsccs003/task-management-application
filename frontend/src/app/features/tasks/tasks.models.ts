@@ -23,6 +23,7 @@ export type TaskActionName =
   | 'cancel'
   | 'delete'
   | 'comment'
+  | 'attach'
   | 'start'
   | 'pause'
   | 'resume'

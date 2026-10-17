@@ -86,7 +86,7 @@ No registration endpoint exists (FR-AUTH-01).
 | POST/PATCH/DELETE | `/roles[/{id}]` | `roles.manage` |
 | PUT | `/roles/{id}/permissions` | `roles.manage` — `[{ code, scope }]` |
 | GET | `/settings` | `settings.manage` — all settings groups |
-| PUT | `/settings/{group}` | `settings.manage` — replaces one validated group, e.g. `/settings/auth` (Phase 4: `auth`; Phase 6: `work` — `maxSessionHours` 1–24, `pauseReasonRequired`, `allocationWarningPercent` 50–99) |
+| PUT | `/settings/{group}` | `settings.manage` — replaces one validated group, e.g. `/settings/auth` (Phase 4: `auth`; Phase 6: `work` — `maxSessionHours` 1–24, `pauseReasonRequired`, `allocationWarningPercent` 50–99; Phase 9: `attachments` — `imageMaxMb` 1–100, `documentMaxMb` 1–500, `videoMaxMb` 1–1024, `allowedTypes` from `png, jpeg, webp, gif, pdf, docx, xlsx, pptx, txt, md, csv, zip, mp4, webm`; SVG and HTML are not in the list and cannot be enabled) |
 
 ### 4.3 Projects
 
@@ -198,6 +198,15 @@ GET `/tasks/{id}/algorithm` lists all submissions (`algorithms.view`).
 | DELETE | `/attachments/{id}` | `attachments.delete` |
 
 Downloads of files with scan status other than `Clean` return 409 (`attachment.not_scanned` / `attachment.infected`).
+
+**Implemented in Phase 9**, with these details:
+- **Upload:** `POST /tasks/{id}/attachments?ownerType=Task|Comment|Algorithm|Review`, `multipart/form-data` with one part named `file`. `ownerType` is a query parameter (not a form field) so permission is checked before any of the body is read; the body is streamed to a temporary file, never buffered as a form. Task files are attached to the task at once. Comment, algorithm and review files are **drafts** (`ownerId: null`), visible only to the uploader, until they are sent as `attachmentIds` with `POST /tasks/{id}/comments`, `/algorithm` or `/submit-review` (at most 10 per record; another member's draft or a linked file answers 400 `attachment.not_linkable`). Drafts not used within 24 hours are removed by the hourly clean-up. Algorithm and review files are the assignee's; comment files need `tasks.comment`; closed or cancelled tasks and read-only projects take no files (409 `task.read_only`).
+- **Checks:** 413 `attachment.too_large` (the limit of the detected type; the upload is cut off as soon as it passes the largest allowed limit), 415 `attachment.type_not_allowed` (a known type switched off in settings), 400 `attachment.type_mismatch` (content is not a supported type, or does not match the extension — e.g. an executable named `.pdf`, AC-ATT-2; text that looks like HTML/SVG/XML), 400 `attachment.empty`, 400 `attachment.file_required`. Uploads are rate limited per member (`Attachments:UploadsPerMinute`, default 30).
+- **Response (`AttachmentDto`):** `id, ownerType, ownerId, fileName` (sanitized), `contentType` (detected), `fileType, category` (`Image`/`Document`/`Video`), `sizeBytes, scanStatus` (`Pending`/`Clean`/`Infected`/`Failed`), `uploadedBy, uploadedAt, canPreview, canDelete`. Upload answers 201.
+- **List:** `GET /tasks/{id}/attachments` returns the task's non-deleted, linked files; algorithm files only with `algorithms.view`.
+- **Download / preview:** always streamed by the API (no signed URLs while storage is a local volume), with range support, `Content-Disposition: attachment` (or `inline` for previews) with a UTF-8 file name, the stored content type, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'` and `Cache-Control: private, no-store`. Previews are for scanned PNG, JPEG, WebP, GIF, MP4 and WebM only (400 `attachment.no_preview` otherwise). A file that could not be scanned answers 409 `attachment.scan_failed`. Anything the caller may not see is 404 (AC-ATT-1). Downloads are audited; previews are not.
+- **Delete:** soft; 204. TLs/PMs (project-wide `attachments.delete`) always; the uploader while the task is not Closed. Deleting a comment deletes its files.
+- `GET /attachment-rules` (signed in): `{ allowedTypes: [{ code, category, extensions, maxBytes }], maxFilesPerRecord }` for the upload form. `allowedActions` gains `attach`.
 
 ### 4.10 Notifications
 

@@ -7,13 +7,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
 import { asApiError } from '../../core/api/api-error';
+import { AttachmentList } from '../attachments/attachment-list';
+import { AttachmentPicker } from '../attachments/attachment-picker';
+import { Attachment } from '../attachments/attachments.models';
+import { TaskAttachmentsStore } from '../attachments/task-attachments.store';
 import { TasksApi } from './tasks.api';
 import { ChecklistItem, ReviewSubmission, Task } from './tasks.models';
 
 /** Submit for review, TL review, closure and reopening (FR-RVW-01..05), with the review history. */
 @Component({
   selector: 'app-task-review',
-  imports: [DatePipe, FormsModule, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatInputModule],
+  imports: [AttachmentList, AttachmentPicker, DatePipe, FormsModule, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatInputModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2>Review</h2>
@@ -28,6 +32,7 @@ import { ChecklistItem, ReviewSubmission, Task } from './tasks.models';
           <textarea matInput name="summary" [(ngModel)]="summary" rows="3" maxlength="10000"></textarea>
           <mat-hint>All required checklist items must be ticked. Submitting ends your work session.</mat-hint>
         </mat-form-field>
+        <app-attachment-picker [taskId]="task().id" ownerType="Review" label="Attach a file to the review" [(drafts)]="drafts" />
         <button mat-flat-button type="submit" [disabled]="busy() || !summary.trim()">Submit for review</button>
       </form>
     }
@@ -79,6 +84,7 @@ import { ChecklistItem, ReviewSubmission, Task } from './tasks.models';
         <li>
           <strong>Revision {{ r.revision }}</strong> submitted by {{ r.submittedBy?.name }} · {{ r.submittedAt | date: 'medium' }}
           <p class="summary">{{ r.summary }}</p>
+          <app-attachment-list [attachments]="filesOf(r.id)" label="Review files" />
           @if (r.decision !== 'Pending') {
             <p [class.changes]="r.decision === 'RevisionRequested'">
               {{ r.decision === 'Approved' ? 'Approved' : 'Changes requested' }} by {{ r.reviewedBy?.name }} · {{ r.reviewedAt | date: 'medium' }}
@@ -138,11 +144,14 @@ export class TaskReview {
   readonly task = input.required<Task>();
   readonly changed = output<Task>();
 
+  private readonly files = inject(TaskAttachmentsStore, { optional: true });
+
   protected readonly reviews = signal<ReviewSubmission[]>([]);
   protected readonly checklist = signal<ChecklistItem[]>([]);
   protected readonly busy = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly reopen = new Set<string>();
+  protected readonly drafts = signal<Attachment[]>([]);
   protected summary = '';
   protected comment = '';
   protected reopenReason = '';
@@ -169,9 +178,18 @@ export class TaskReview {
     else this.reopen.delete(id);
   }
 
+  protected filesOf(reviewId: string): Attachment[] {
+    return this.files?.forOwner('Review', reviewId) ?? [];
+  }
+
   protected async submit(): Promise<void> {
-    await this.act(() => this.api.submitReview(this.task().id, this.summary));
-    if (!this.failure()) this.summary = '';
+    const ids = this.drafts().map((d) => d.id);
+    await this.act(() => this.api.submitReview(this.task().id, this.summary, ids));
+    if (!this.failure()) {
+      this.summary = '';
+      this.drafts.set([]);
+      if (ids.length) await this.files?.changed();
+    }
   }
 
   protected async approve(): Promise<void> {

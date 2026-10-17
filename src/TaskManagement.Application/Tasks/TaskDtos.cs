@@ -133,4 +133,5 @@ public sealed record TaskCommentDto(
     bool CanEdit,
     bool CanDelete);
 
-public sealed record SaveCommentCommand(string? Body);
+/// <summary><paramref name="AttachmentIds"/> (new comments only): the caller's draft files uploaded with owner type Comment.</summary>
+public sealed record SaveCommentCommand(string? Body, IReadOnlyList<Guid>? AttachmentIds = null);

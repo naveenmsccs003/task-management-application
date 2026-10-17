@@ -55,6 +55,15 @@ builder.Services.AddSignalR().AddJsonProtocol(options =>
 builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAttachmentUploads(builder.Configuration);
+
+// Q9: uploads must be malware-scanned outside development.
+if (builder.Environment.IsProduction()
+    && builder.Configuration.GetValue("Attachments:Scanner", TaskManagement.Infrastructure.Files.MalwareScannerKind.ClamAv)
+        == TaskManagement.Infrastructure.Files.MalwareScannerKind.None)
+{
+    throw new InvalidOperationException("Attachments:Scanner cannot be None in Production. Configure ClamAV (see docs/deployment.md).");
+}
 
 var app = builder.Build();
 
@@ -75,6 +84,9 @@ if (args.Length > 0 && args[0] == CreateAdminCommand.Name)
 {
     return await CreateAdminCommand.RunAsync(app.Services, args);
 }
+
+// Fail at start-up, not at the first upload, when the private file storage is not configured.
+app.Services.GetRequiredService<TaskManagement.Application.Attachments.IFileStorage>();
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
@@ -109,6 +121,7 @@ api.MapTaskEndpoints();
 api.MapWorkEndpoints();
 api.MapNotificationEndpoints();
 api.MapReviewEndpoints();
+api.MapAttachmentEndpoints();
 app.MapHub<NotificationHub>(NotificationHub.Path);
 
 await app.RunAsync();

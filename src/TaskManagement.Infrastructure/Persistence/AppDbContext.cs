@@ -5,6 +5,7 @@ using TaskManagement.Application.Common;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
 using TaskManagement.Domain.Checklists;
+using TaskManagement.Domain.Files;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Operations;
@@ -72,6 +73,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
 
     public DbSet<DelayReport> DelayReports => Set<DelayReport>();
+
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     public bool IsUniqueViolation(DbUpdateException exception) =>
         exception?.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };

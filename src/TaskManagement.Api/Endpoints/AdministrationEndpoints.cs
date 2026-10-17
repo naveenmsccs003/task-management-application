@@ -44,6 +44,9 @@ internal static class AdministrationEndpoints
         settings.MapPut("/work", async (WorkSettings value, SettingsService service, CancellationToken ct) =>
                 (await service.UpdateWorkAsync(value, ct)).ToHttpResult())
             .RequirePermission(PermissionCatalog.SettingsManage);
+        settings.MapPut("/attachments", async (AttachmentSettings value, SettingsService service, CancellationToken ct) =>
+                (await service.UpdateAttachmentsAsync(value, ct)).ToHttpResult())
+            .RequirePermission(PermissionCatalog.SettingsManage);
 
         api.MapGet("/audit-logs", async (
                 DateTimeOffset? from, DateTimeOffset? to, Guid? actorId, string? action, string? entityType, string? entityId,

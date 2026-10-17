@@ -62,9 +62,17 @@ export interface WorkSettings {
   allocationWarningPercent: number;
 }
 
+export interface AttachmentSettings {
+  imageMaxMb: number;
+  documentMaxMb: number;
+  videoMaxMb: number;
+  allowedTypes: string[];
+}
+
 export interface Settings {
   auth: AuthSettings;
   work: WorkSettings;
+  attachments: AttachmentSettings;
 }
 
 export interface AuditEntry {

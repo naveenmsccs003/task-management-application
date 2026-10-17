@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Notifications;
@@ -7,6 +8,7 @@ using TaskManagement.Application.Tasks;
 using TaskManagement.Application.Work;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
+using TaskManagement.Domain.Files;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Tasks;
@@ -14,7 +16,8 @@ using TaskManagement.Domain.Time;
 
 namespace TaskManagement.Application.Review;
 
-public sealed record SubmitReviewCommand(string? Summary);
+/// <summary><paramref name="AttachmentIds"/>: the caller's draft files uploaded with owner type Review (FR-ATT-01).</summary>
+public sealed record SubmitReviewCommand(string? Summary, IReadOnlyList<Guid>? AttachmentIds = null);
 
 public sealed record ApproveReviewCommand(string? Comment);
 
@@ -38,6 +41,7 @@ public sealed class ReviewService(
     TaskQueries queries,
     WorkService work,
     RequestService requests,
+    AttachmentService attachments,
     Notifier notifier,
     IAuditLog auditLog,
     TimeProvider timeProvider)
@@ -109,7 +113,14 @@ public sealed class ReviewService(
         }
 
         await work.CloseActiveSessionAsync(task.Id, SessionEndReason.Submitted, now, cancellationToken);
-        db.ReviewSubmissions.Add(ReviewSubmission.Create(task.Id, task.CurrentRevision, command.Summary!, visible.UserId, now));
+        var submission = ReviewSubmission.Create(task.Id, task.CurrentRevision, command.Summary!, visible.UserId, now);
+        db.ReviewSubmissions.Add(submission);
+        var linked = await attachments.LinkDraftsAsync(task.Id, AttachmentOwnerType.Review, submission.Id, command.AttachmentIds, visible.UserId, cancellationToken);
+        if (linked.IsFailure)
+        {
+            return linked.Error!;
+        }
+
         await notifier.NotifyAsync(
             await LeadsExcept(task, cancellationToken), NotificationType.SubmittedForReview, $"{task.Key} is ready for review",
             $"“{task.Title}” (revision {task.CurrentRevision}) was submitted for review.", Link(task), task.ProjectId, task.Id, cancellationToken);

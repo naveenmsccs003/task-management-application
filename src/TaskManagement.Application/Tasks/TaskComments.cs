@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Common;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
+using TaskManagement.Domain.Files;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Tasks;
 
@@ -12,7 +14,8 @@ namespace TaskManagement.Application.Tasks;
 /// Task comments (FR-TASK-08): anyone who can see the task can read them; tasks.comment is needed to post. Authors edit
 /// within 15 minutes (edits keep history); the author or a TL/PM (tasks.update in the project) can delete, softly.
 /// </summary>
-public sealed class TaskComments(IAppDbContext db, ICurrentUser currentUser, TaskAccess access, IAuditLog auditLog, TimeProvider timeProvider)
+public sealed class TaskComments(
+    IAppDbContext db, ICurrentUser currentUser, TaskAccess access, AttachmentService attachments, IAuditLog auditLog, TimeProvider timeProvider)
 {
     public async Task<Result<IReadOnlyList<TaskCommentDto>>> ListAsync(Guid taskId, CancellationToken cancellationToken)
     {
@@ -64,6 +67,12 @@ public sealed class TaskComments(IAppDbContext db, ICurrentUser currentUser, Tas
 
         var comment = TaskComment.Create(taskId, currentUser.RequiredUserId, command.Body!, timeProvider.GetUtcNow());
         db.TaskComments.Add(comment);
+        var linked = await attachments.LinkDraftsAsync(taskId, AttachmentOwnerType.Comment, comment.Id, command.AttachmentIds, comment.AuthorId, cancellationToken);
+        if (linked.IsFailure)
+        {
+            return linked.Error!;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return ToDto(comment, visible, await AuthorAsync(comment.AuthorId, cancellationToken));
     }
@@ -132,6 +141,7 @@ public sealed class TaskComments(IAppDbContext db, ICurrentUser currentUser, Tas
         if (!comment.IsDeleted)
         {
             comment.Delete(currentUser.RequiredUserId, timeProvider.GetUtcNow());
+            await attachments.DeleteForOwnerAsync(AttachmentOwnerType.Comment, comment.Id, currentUser.RequiredUserId, cancellationToken);
             auditLog.Record("task.comment_deleted", "TaskComment", comment.Id.ToString(), new AuditChanges()
                 .Set("taskId", taskId)
                 .Set("authorId", comment.AuthorId), visible.Task.ProjectId);

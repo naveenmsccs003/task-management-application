@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { toParams } from '../../core/api/http-params';
 import { PagedResult } from '../../core/api/paged';
 import { PermissionGrant } from '../../core/auth/auth.models';
-import { AuditEntry, AuditQuery, AuthSettings, Member, MemberQuery, Permission, Role, SaveMember, Settings, WorkSettings } from './admin.models';
+import { AttachmentSettings, AuditEntry, AuditQuery, AuthSettings, Member, MemberQuery, Permission, Role, SaveMember, Settings, WorkSettings } from './admin.models';
 
 /** Typed calls to the administration endpoints (docs/api-design.md §4.2, §4.12). */
 @Injectable({ providedIn: 'root' })
@@ -73,6 +73,10 @@ export class AdminApi {
 
   updateWorkSettings(settings: WorkSettings): Observable<WorkSettings> {
     return this.http.put<WorkSettings>('/api/v1/settings/work', settings);
+  }
+
+  updateAttachmentSettings(settings: AttachmentSettings): Observable<AttachmentSettings> {
+    return this.http.put<AttachmentSettings>('/api/v1/settings/attachments', settings);
   }
 
   auditLogs(query: AuditQuery): Observable<PagedResult<AuditEntry>> {

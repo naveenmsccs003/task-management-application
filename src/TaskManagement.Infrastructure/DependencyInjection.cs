@@ -1,10 +1,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Identity;
 using TaskManagement.Application.Notifications;
 using TaskManagement.Infrastructure.Email;
+using TaskManagement.Infrastructure.Files;
 using TaskManagement.Infrastructure.Identity;
 using TaskManagement.Infrastructure.Jobs;
 using TaskManagement.Infrastructure.Notifications;
@@ -78,8 +82,46 @@ public static class DependencyInjection
             services.AddHostedService(sp => sp.GetRequiredService<SessionMonitorWorker>());
         }
 
-        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
+        AddAttachments(services, configuration);
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
+            .AddCheck<FileStorageHealthCheck>("file-storage", tags: ["ready"])
+            .AddCheck<ClamAvHealthCheck>("malware-scanner", tags: ["ready"]);
 
         return services;
+    }
+
+    /// <summary>Private file storage and malware scanning (docs/deployment.md, Q9).</summary>
+    private static void AddAttachments(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(AttachmentOptions.Section);
+        services.Configure<AttachmentOptions>(section);
+        services.TryAddSingleton<IFileStorage>(sp =>
+        {
+            var path = sp.GetRequiredService<IOptions<AttachmentOptions>>().Value.LocalPath;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new InvalidOperationException(
+                    $"{AttachmentOptions.Section}:LocalPath is not configured. Set it to a private folder outside the web root (see docs/deployment.md).");
+            }
+
+            return new LocalFileStorage(Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, path));
+        });
+
+        if (section.GetValue(nameof(AttachmentOptions.Scanner), MalwareScannerKind.ClamAv) == MalwareScannerKind.None)
+        {
+            services.TryAddSingleton<IMalwareScanner, DisabledMalwareScanner>();
+        }
+        else
+        {
+            services.TryAddSingleton<IMalwareScanner, ClamAvScanner>();
+        }
+
+        services.AddSingleton<AttachmentScanWorker>();
+        if (section.GetValue(nameof(AttachmentOptions.ScanWorkerEnabled), true))
+        {
+            services.AddHostedService(sp => sp.GetRequiredService<AttachmentScanWorker>());
+        }
     }
 }

@@ -35,4 +35,8 @@ public sealed record Error
     public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound, null);
 
     public static Error Conflict(string code, string message) => new(code, message, ErrorType.Conflict, null);
+
+    public static Error TooLarge(string code, string message) => new(code, message, ErrorType.TooLarge, null);
+
+    public static Error UnsupportedMediaType(string code, string message) => new(code, message, ErrorType.UnsupportedMediaType, null);
 }

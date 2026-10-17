@@ -36,7 +36,10 @@ describe('review and request sections', () => {
     backend = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    backend.match('/api/v1/attachment-rules').forEach((r) => r.flush({ allowedTypes: [{ code: 'pdf', category: 'Document', extensions: ['.pdf'], maxBytes: 1048576 }], maxFilesPerRecord: 10 }));
+    backend.verify();
+  });
 
   function buttons(element: HTMLElement): HTMLButtonElement[] {
     return [...element.querySelectorAll<HTMLButtonElement>('button')];

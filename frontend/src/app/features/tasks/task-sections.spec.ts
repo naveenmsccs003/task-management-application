@@ -39,7 +39,10 @@ describe('task sections', () => {
     backend = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    backend.match('/api/v1/attachment-rules').forEach((r) => r.flush({ allowedTypes: [{ code: 'pdf', category: 'Document', extensions: ['.pdf'], maxBytes: 1048576 }], maxFilesPerRecord: 10 }));
+    backend.verify();
+  });
 
   function buttons(element: HTMLElement): string[] {
     return [...element.querySelectorAll('button')].map((b) => b.textContent!.trim());
@@ -64,7 +67,7 @@ describe('task sections', () => {
     backend.expectOne('/api/v1/tasks/t1/algorithm').flush([]);
     await assigneeView.whenStable();
     assigneeView.detectChanges();
-    expect(buttons(assigneeView.nativeElement)).toEqual(['Submit algorithm']);
+    expect(buttons(assigneeView.nativeElement)).toEqual(['Attach files', 'Submit algorithm']);
   });
 
   it('lets only the assignee tick checklist items and sends the note', async () => {
