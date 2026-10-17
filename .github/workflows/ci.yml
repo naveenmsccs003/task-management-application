@@ -79,6 +79,65 @@ jobs:
       - name: Audit dependencies (high and critical)
         run: npm audit --audit-level=high
 
+  # Real browser against the real API, Angular dev server and PostgreSQL (docs/testing.md §3). Runs on main only.
+  e2e:
+    name: End-to-end (Playwright)
+    if: github.event_name == 'push'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: e2e-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TMA_E2E_DB: Host=localhost;Port=5432;Database=tma_e2e;Username=postgres;Password=e2e-only-password
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Build API
+        run: dotnet build src/TaskManagement.Api
+
+      - name: Install frontend and Playwright
+        run: |
+          npm ci --prefix frontend
+          npm ci --prefix e2e
+          cd e2e && npx playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest

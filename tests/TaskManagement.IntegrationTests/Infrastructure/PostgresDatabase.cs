@@ -44,13 +44,36 @@ public sealed class PostgresDatabase : IAsyncDisposable
                 await command.ExecuteNonQueryAsync();
             }
 
+            await EnsureAppRoleAsync(external);
             var connectionString = new NpgsqlConnectionStringBuilder(external) { Database = databaseName }.ConnectionString;
             return new PostgresDatabase(connectionString, null, external, databaseName);
         }
 
         var container = new PostgreSqlBuilder(Image).Build();
         await container.StartAsync();
+        await EnsureAppRoleAsync(container.GetConnectionString());
         return new PostgresDatabase(container.GetConnectionString(), container, null, null);
+    }
+
+    /// <summary>
+    /// The production application role (deploy/db/create-roles.sql). Migrations grant it only INSERT/SELECT on the
+    /// audit table; creating it here lets tests verify those grants. NOLOGIN: tests never connect as it.
+    /// </summary>
+    private static async Task EnsureAppRoleAsync(string serverConnectionString)
+    {
+        await using var connection = new NpgsqlConnection(serverConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'tma_app') THEN CREATE ROLE tma_app NOLOGIN; END IF; END $$;",
+            connection);
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+        }
+        catch (PostgresException exception) when (exception.SqlState is PostgresErrorCodes.DuplicateObject or PostgresErrorCodes.UniqueViolation)
+        {
+            // Another test fixture created the role at the same moment.
+        }
     }
 
     public async ValueTask DisposeAsync()

@@ -15,7 +15,7 @@ Last updated: 2026-10-17
 |---|---|---|---|
 | Domain unit | `tests/TaskManagement.Domain.Tests` | xUnit v3 | Workflow transition table (every state × action), checklist rule, separation of duties, time calculations, request lifecycle |
 | Application unit | `tests/TaskManagement.Application.Tests` | xUnit v3, fakes, `FakeTimeProvider` | Handler logic, notification events, allocated-hour thresholds |
-| Integration | `tests/TaskManagement.IntegrationTests` | xUnit v3, `WebApplicationFactory`, Testcontainers PostgreSQL 17, MailKit test SMTP sink | Full HTTP requests: authorization matrix, workflows end-to-end in the API, DB constraints, migrations apply cleanly, audit rows, CSRF, rate limits, upload validation |
+| Integration | `tests/TaskManagement.IntegrationTests` | xUnit v3, `WebApplicationFactory`, Testcontainers PostgreSQL 18, in-memory email transport (`FakeEmailTransport`) | Full HTTP requests: authorization matrix, workflows end-to-end in the API, DB constraints, migrations apply cleanly, audit rows, CSRF, rate limits, upload validation |
 | Architecture | `tests/TaskManagement.ArchitectureTests` | xUnit v3 + reflection | Layer dependencies (Domain → nothing, etc.), module folder rules, endpoints have authorization metadata |
 | Angular unit | `frontend/` | Vitest (Angular default), Angular Testing Library style | Components, guards, interceptors, permission-based visibility, form validation |
 | End-to-end | `e2e/` | Playwright | Main user journeys in a real browser against the API + PostgreSQL |
@@ -35,11 +35,11 @@ Last updated: 2026-10-17
 
 **End-to-end journeys (Playwright).**
 
-1. Admin creates member → member sets password via invite link (email captured from Mailpit) → signs in.
+1. Admin creates member → member sets password via invite link (email read from the API's pickup folder) → signs in. *(Implemented in Phase 4: `e2e/tests/admin-invites-member.spec.ts`.)*
 2. PM creates project and task → TL assigns → developer submits algorithm → TL rejects → developer resubmits → TL approves.
 3. Developer starts, pauses, resumes, completes checklist, submits → TL requests revision → developer resubmits → TL approves → PM closes.
 4. Developer requests extension → TL approves → due date updated.
-5. Developer cannot open another developer's task by URL (sees "not found").
+5. Developer cannot open another developer's task by URL (sees "not found"). *(Phase 4 covers the member → admin-page part: "No access" in the UI and 403 from the API.)*
 
 ## 4. Test data
 
@@ -63,8 +63,11 @@ cd frontend
 npm run lint
 npx ng test --watch=false
 
-# End-to-end (from Phase 4)
-cd e2e && npx playwright test
+# End-to-end: Playwright starts the API (Development, emails written to e2e/.mail) and the Angular dev server.
+# TMA_E2E_DB is a database the tests may use; it is migrated on start and can be reused between runs.
+export TMA_E2E_DB="Host=127.0.0.1;Port=5432;Database=tma_e2e;Username=postgres;Password=..."
+dotnet build src/TaskManagement.Api
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
 ```
 
 ## 6. CI quality gates (GitHub Actions)
@@ -78,7 +81,7 @@ A pull request can merge only if:
 5. No high/critical vulnerable packages; no secrets detected.
 6. Line coverage is reported (target ≥ 80 % for Domain and Application; not a hard gate on other layers).
 
-End-to-end tests run on the main branch and before releases.
+End-to-end tests run on the main branch (CI job `e2e`, after the backend and frontend jobs pass) and before releases.
 
 ## 7. Phase status
 
@@ -86,4 +89,5 @@ End-to-end tests run on the main branch and before releases.
 |---|---|---|
 | 1 | None (documentation only) | — |
 | 2 | None (documentation only) | — |
-| 3 | Backend: 34 tests (Domain 10, Architecture 14, Integration 10) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`. Frontend: 11 Vitest tests. Lint, format, build, migration check, vulnerability scans. | All passed locally (2026-10-17). The Testcontainers path and GitHub Actions were not run locally (no Docker) — first run is on GitHub after push. |
+| 3 | Backend: 34 tests (Domain 10, Architecture 14, Integration 10) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`. Frontend: 11 Vitest tests. Lint, format, build, migration check, vulnerability scans. | All passed locally (2026-10-17). First GitHub Actions run (incl. Testcontainers) passed after push. |
+| 4 | Backend: 141 tests (Domain 33, Application 26, Architecture 16, Integration 66) against PostgreSQL 18.6 via `TMA_TEST_POSTGRES`, run twice. Frontend: 28 Vitest tests, ESLint. End-to-end: 2 Playwright tests (journey 1 + generic sign-in error) in Chromium against API + Angular dev server + PostgreSQL. `dotnet format`, migration check, vulnerability scans. | All passed locally (2026-10-17). The new CI `e2e` job runs for the first time after push. |

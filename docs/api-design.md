@@ -70,6 +70,8 @@ Permission codes refer to [permissions-matrix.md](permissions-matrix.md).
 
 No registration endpoint exists (FR-AUTH-01).
 
+**Implemented in Phase 4:** antiforgery, login, logout, forgot/reset/change password, `GET`/`PATCH /me`. Not yet: `rememberMe` (every session lasts `Auth:SessionLifetime`, default 8 h, sliding), the MFA endpoints (follow-up step, see [known-issues.md](known-issues.md)) and notification preferences (notifications phase).
+
 ### 4.2 Members, roles, settings
 
 | Method | Path | Permission |
@@ -83,7 +85,8 @@ No registration endpoint exists (FR-AUTH-01).
 | GET | `/roles` · `/permissions` | `roles.view` |
 | POST/PATCH/DELETE | `/roles[/{id}]` | `roles.manage` |
 | PUT | `/roles/{id}/permissions` | `roles.manage` — `[{ code, scope }]` |
-| GET/PATCH | `/settings` | `settings.manage` |
+| GET | `/settings` | `settings.manage` — all settings groups |
+| PUT | `/settings/{group}` | `settings.manage` — replaces one validated group, e.g. `/settings/auth` (Phase 4: `auth` only) |
 
 ### 4.3 Projects
 

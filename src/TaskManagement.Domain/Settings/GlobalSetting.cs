@@ -1,7 +1,7 @@
 namespace TaskManagement.Domain.Settings;
 
 /// <summary>
-/// One system-wide setting, stored as JSON. Typed access and validation are added with the Settings module (Phase 4).
+/// One system-wide setting, stored as JSON. Typed access and validation: <c>SettingsService</c> in the Application layer.
 /// </summary>
 public sealed class GlobalSetting
 {
@@ -30,4 +30,12 @@ public sealed class GlobalSetting
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public Guid? UpdatedBy { get; private set; }
+
+    public void Update(string valueJson, DateTimeOffset updatedAt, Guid? updatedBy)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(valueJson);
+        ValueJson = valueJson;
+        UpdatedAt = updatedAt;
+        UpdatedBy = updatedBy;
+    }
 }

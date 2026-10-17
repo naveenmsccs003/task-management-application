@@ -1,18 +1,19 @@
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { asApiError } from '../../core/api/api-error';
+import { AuthService } from '../../core/auth/auth.service';
 import { SYSTEM_INFO_URL, SystemInfo } from '../../core/system/system-info';
 
-/** Temporary landing page (Phase 3): proves the browser → proxy → API → database path works. */
+/** Landing page. Dashboards replace this in the reports phase; for now it greets the member and shows API status. */
 @Component({
   selector: 'app-home',
   imports: [DatePipe, MatCardModule, MatProgressSpinnerModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Task Management</h1>
+    <h1>Welcome{{ auth.me() ? ', ' + auth.me()!.fullName : '' }}</h1>
     <mat-card appearance="outlined">
       <mat-card-header>
         <mat-card-title>API status</mat-card-title>
@@ -61,6 +62,7 @@ import { SYSTEM_INFO_URL, SystemInfo } from '../../core/system/system-info';
   `,
 })
 export class Home {
+  protected readonly auth = inject(AuthService);
   protected readonly systemInfo = httpResource<SystemInfo>(() => SYSTEM_INFO_URL);
 
   protected readonly error = computed(() => {

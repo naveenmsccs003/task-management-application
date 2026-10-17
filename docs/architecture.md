@@ -228,3 +228,5 @@ A SignalR hub (`/hubs/notifications`) authenticated by the same cookie pushes "n
 | D6 | Minimal APIs + handler classes, no MediatR/AutoMapper | Less magic, no commercial-licence dependency, small focused files. |
 | D7 | Outbox for notifications | Notifications never lost and never roll back business changes. |
 | D8 | GitHub + GitHub Actions for source control and CI | Decision Q1. GitLab is used only as an integration source. |
+| D9 | Cookie authentication without ASP.NET Core Identity's user store; only Identity's `PasswordHasher` is used | Our own `users` table, roles and lockout rules (D4) fit the requirements; Identity's store and UI would add tables and endpoints we would have to disable. The hasher is the well-reviewed part worth reusing. |
+| D10 | Application handlers use EF Core (`DbSet`, LINQ) directly — no repository layer — but not the PostgreSQL provider | A generic repository over EF Core adds code without adding safety. Architecture tests stop Application from referencing the relational/Npgsql packages, so provider-specific SQL stays in Infrastructure. |

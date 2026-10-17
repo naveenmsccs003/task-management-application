@@ -12,11 +12,14 @@ public sealed class UnhandledExceptionTests : IAsyncLifetime
 {
     private const string SecretLookingMessage = "Internal failure: Host=db-prod;Password=hunter2";
 
-    private readonly ApiFactory _factory = new()
+    private readonly ThrowingTimeProvider _clock = new();
+    private readonly ApiFactory _factory;
+
+    public UnhandledExceptionTests()
     {
         // The system-info endpoint reads the clock; a broken clock makes it throw.
-        ConfigureServices = services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(new ThrowingTimeProvider())),
-    };
+        _factory = new ApiFactory { ConfigureServices = services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(_clock)) };
+    }
 
     public ValueTask InitializeAsync() => _factory.InitializeAsync();
 
@@ -26,6 +29,7 @@ public sealed class UnhandledExceptionTests : IAsyncLifetime
     public async Task Unhandled_exception_returns_generic_problem_details()
     {
         var client = _factory.CreateClient();
+        _clock.Broken = true; // after start-up, which also reads the clock (seeding)
 
         var response = await client.GetAsync(new Uri("/api/v1/system/info", UriKind.Relative), TestContext.Current.CancellationToken);
 
@@ -45,6 +49,9 @@ public sealed class UnhandledExceptionTests : IAsyncLifetime
 
     private sealed class ThrowingTimeProvider : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => throw new InvalidOperationException(SecretLookingMessage);
+        public bool Broken { get; set; }
+
+        public override DateTimeOffset GetUtcNow() =>
+            Broken ? throw new InvalidOperationException(SecretLookingMessage) : System.GetUtcNow();
     }
 }

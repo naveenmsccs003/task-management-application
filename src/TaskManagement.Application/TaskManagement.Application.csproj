@@ -1,9 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Use cases, DTOs and interfaces. May reference only Domain (see architecture tests). -->
+  <!--
+    Use cases, DTOs and interfaces. May reference Domain and Microsoft.EntityFrameworkCore (core LINQ/DbSet only),
+    but not the PostgreSQL provider, Infrastructure or ASP.NET Core (see architecture tests, decision D10).
+  -->
   <ItemGroup>
     <ProjectReference Include="..\TaskManagement.Domain\TaskManagement.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="TaskManagement.Application.Tests" />
   </ItemGroup>
 </Project>

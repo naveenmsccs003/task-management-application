@@ -1,6 +1,6 @@
 # Deployment
 
-Status: **Phase 3 — local development documented; test/production details added in later phases**
+Status: **Phase 4 — local development and first-Admin setup documented; test/production details added in later phases**
 Last updated: 2026-10-17
 
 ## 1. Environments
@@ -47,6 +47,14 @@ cd frontend && npm ci && npm start
 
 OpenAPI document (Development/Testing only): `http://localhost:5080/openapi/v1.json`.
 
+**First Admin.** There is no registration page. Create the first Admin from the command line; the invite email (with the set-password link) is written to `storage/mail/` as an `.eml` file in Development:
+
+```bash
+dotnet run --project src/TaskManagement.Api -- create-admin --email you@example.com --name "Your Name" --time-zone Asia/Kolkata
+```
+
+Open the newest file in `storage/mail/`, follow the link, set a password and sign in at `http://localhost:4200`.
+
 `npm` 11 blocks package install scripts unless approved. The four Angular build-tool packages that have them (`esbuild`, `lmdb`, `@parcel/watcher`, `msgpackr-extract`) are denied in `frontend/package.json` → `allowScripts`; their prebuilt binaries work without the scripts (verified by build and tests).
 
 ## 3. Production topology
@@ -77,9 +85,19 @@ flowchart LR
 ## 5. First-time setup (production)
 
 1. Create database, roles and grants: `psql -h <host> -U postgres -v migrator_password=... -v app_password=... -f deploy/db/create-roles.sql`.
-2. Configure secrets.
+2. Configure secrets and settings (environment variables use `__` for `:`):
+
+   | Setting | Purpose |
+   |---|---|
+   | `ConnectionStrings__Default` | `tma_app` connection string (secret) |
+   | `App__PublicBaseUrl` | Public HTTPS address; used in email links |
+   | `Email__SmtpHost`, `Email__SmtpPort`, `Email__SmtpSecurity`, `Email__FromAddress` | SMTP server |
+   | `Email__SmtpUserName`, `Email__SmtpPassword` | SMTP credentials (secret) |
+   | `DataProtection__KeysPath` | Protected volume for the keys that encrypt sign-in cookies; must survive restarts and be shared by all instances |
+   | `DataProtection__CertificatePath`, `DataProtection__CertificatePassword` | Certificate that encrypts those keys at rest (password is a secret) |
+
 3. Run migration bundle as `tma_migrator`; the app connects as `tma_app`.
-4. Run `create-admin` command to send the first Admin invite.
+4. Send the first Admin invite: `dotnet TaskManagement.Api.dll create-admin --email <email> --name "<full name>" [--time-zone <IANA id>]`. The link is emailed, never printed.
 
 ## 6. Backups
 

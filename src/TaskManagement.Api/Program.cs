@@ -1,11 +1,16 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Auth;
+using TaskManagement.Api.Cli;
 using TaskManagement.Api.Common;
 using TaskManagement.Api.Endpoints;
 using TaskManagement.Application;
+using TaskManagement.Application.Common;
+using TaskManagement.Application.Identity;
 using TaskManagement.Infrastructure;
 using TaskManagement.Infrastructure.Persistence;
+using TaskManagement.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +27,9 @@ if (!builder.Environment.IsDevelopment())
 }
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.Section));
 builder.Services.AddApiProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi("v1");
@@ -38,10 +46,29 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 
+builder.Services.AddApiAuth(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Development convenience only. Testing and Production apply migrations with a migration bundle (docs/database-design.md §6).
+if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Database:MigrateOnStartup", false))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
+// Permissions and system roles must exist before the first request (and before CLI commands).
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<DataSeeder>().SeedAsync(CancellationToken.None);
+}
+
+if (args.Length > 0 && args[0] == CreateAdminCommand.Name)
+{
+    return await CreateAdminCommand.RunAsync(app.Services, args);
+}
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
@@ -52,6 +79,10 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+
 if (app.Environment.IsDevelopment() || app.Environment.IsTesting())
 {
     app.MapOpenApi("/openapi/{documentName}.json");
@@ -61,17 +92,15 @@ if (app.Environment.IsDevelopment() || app.Environment.IsTesting())
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
-var api = app.MapGroup("/api/v1");
+var api = app.MapGroup("/api/v1").AddEndpointFilter<AntiforgeryFilter>();
 api.MapSystemEndpoints();
-
-// Development convenience only. Testing and Production apply migrations with a migration bundle (docs/database-design.md §6).
-if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Database:MigrateOnStartup", false))
-{
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
-}
+api.MapAuthEndpoints();
+api.MapMeEndpoints();
+api.MapMemberEndpoints();
+api.MapAdministrationEndpoints();
 
 await app.RunAsync();
+return 0;
 
 /// <summary>Entry point; public so integration tests can host the app with WebApplicationFactory.</summary>
 public partial class Program;

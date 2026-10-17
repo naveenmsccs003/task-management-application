@@ -19,9 +19,12 @@ public sealed class LayerDependencyTests
         { "TaskManagement.Domain", "Microsoft.Extensions" },
         { "TaskManagement.Application", "TaskManagement.Infrastructure" },
         { "TaskManagement.Application", "TaskManagement.Api" },
-        { "TaskManagement.Application", "Microsoft.EntityFrameworkCore" },
+        // Decision D10: Application may use EF Core's core package (DbSet, LINQ) but not relational/provider packages.
+        { "TaskManagement.Application", "Microsoft.EntityFrameworkCore.Relational" },
         { "TaskManagement.Application", "Microsoft.AspNetCore" },
         { "TaskManagement.Application", "Npgsql" },
+        { "TaskManagement.Application", "Npgsql.EntityFrameworkCore.PostgreSQL" },
+        { "TaskManagement.Application", "MailKit" },
         { "TaskManagement.Infrastructure", "TaskManagement.Api" },
         { "TaskManagement.Infrastructure", "Microsoft.AspNetCore" },
     };

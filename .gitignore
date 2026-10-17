@@ -34,3 +34,6 @@ storage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# End-to-end test artifacts
+e2e/.mail/

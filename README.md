@@ -2,7 +2,7 @@
 
 A role-based task management application with project and task workflows, algorithm approval, work-session time tracking, checklists, TL review, attachments, deadline and reassignment approvals, GitLab issue import, reports and audit logs.
 
-**Current status: Phases 1–2 approved. Phase 3 — foundation (awaiting approval): backend and Angular skeletons, database migrations, error handling, CI. No business features yet.**
+**Current status: Phases 1–3 approved. Phase 4 — authentication, members, roles and permissions, settings, audit log (awaiting approval). Projects and tasks come in Phase 5.**
 
 ## Planned technology
 
@@ -38,8 +38,8 @@ Each phase ends with builds, tests, a report, and an approval checkpoint.
 
 1. **Requirements and workflow design** — approved.
 2. **Architecture and design** — approved: module boundaries, database schema, API design, security design, test strategy, deployment outline.
-3. **Foundation** — current phase: solution skeleton, Angular app, PostgreSQL + migrations, error handling, logging, OpenAPI, CI pipeline.
-4. **Authentication, members, roles, permissions, settings, audit log base.**
+3. **Foundation** — approved: solution skeleton, Angular app, PostgreSQL + migrations, error handling, logging, OpenAPI, CI pipeline.
+4. **Authentication, members, roles, permissions, settings, audit log base** — current phase. MFA follows as a separate step.
 5. **Projects, tasks, assignments, comments.**
 6. **Algorithm approval, checklists, work sessions, allocated hours.**
 7. **Notifications (in-app, email, background jobs).**
@@ -53,7 +53,8 @@ Each phase ends with builds, tests, a report, and an approval checkpoint.
 
 ```
 src/            ASP.NET Core backend: Domain, Application, Infrastructure, Api
-tests/          Domain, architecture and integration tests (xUnit v3)
+tests/          Domain, Application, architecture and integration tests (xUnit v3)
+e2e/            Playwright end-to-end tests
 frontend/       Angular 22 app
 deploy/db/      Database roles and grants script
 docs/           Requirements and design documents
@@ -70,6 +71,8 @@ dotnet user-secrets --project src/TaskManagement.Api set "ConnectionStrings:Defa
   "Host=localhost;Port=5432;Database=tma;Username=postgres;Password=<your password>"
 dotnet run --project src/TaskManagement.Api      # http://localhost:5080
 cd frontend && npm ci && npm start               # http://localhost:4200
+dotnet run --project src/TaskManagement.Api -- create-admin --email you@example.com --name "Your Name"
+                                                 # first Admin; invite email lands in storage/mail/
 ```
 
 Tests:
@@ -77,6 +80,7 @@ Tests:
 ```bash
 dotnet test --solution TaskManagement.slnx       # needs Docker, or TMA_TEST_POSTGRES (see docs/testing.md)
 cd frontend && npm run lint && npx ng test --watch=false
+cd e2e && npx playwright test                    # needs TMA_E2E_DB (see docs/testing.md)
 ```
 
 Details: [docs/deployment.md](docs/deployment.md) and [docs/testing.md](docs/testing.md).

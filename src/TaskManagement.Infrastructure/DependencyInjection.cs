@@ -1,6 +1,12 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using TaskManagement.Application.Common;
+using TaskManagement.Application.Identity;
+using TaskManagement.Infrastructure.Email;
+using TaskManagement.Infrastructure.Identity;
 using TaskManagement.Infrastructure.Persistence;
+using TaskManagement.Infrastructure.Seeding;
 
 namespace TaskManagement.Infrastructure;
 
@@ -25,6 +31,28 @@ public static class DependencyInjection
 
             DbContextOptionsSetup.Configure(options, connectionString);
         });
+        services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<DataSeeder>();
+
+        services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+        services.AddScoped<ISignInAttemptStore, SignInAttemptStore>();
+
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
+        var transport = configuration.GetValue(EmailOptions.Section + ":Transport", EmailTransportKind.Smtp);
+        if (transport == EmailTransportKind.PickupDirectory)
+        {
+            services.TryAddSingleton<IEmailTransport, PickupDirectoryEmailTransport>();
+        }
+        else
+        {
+            services.TryAddSingleton<IEmailTransport, SmtpEmailTransport>();
+        }
+
+        services.AddSingleton<EmailDeliveryWorker>();
+        if (configuration.GetValue(EmailOptions.Section + ":BackgroundWorkerEnabled", true))
+        {
+            services.AddHostedService(sp => sp.GetRequiredService<EmailDeliveryWorker>());
+        }
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 

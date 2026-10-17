@@ -1,0 +1,30 @@
+:host {
+  display: flex;
+  justify-content: center;
+  padding-top: 48px;
+}
+mat-card {
+  width: 100%;
+  max-width: 420px;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.message {
+  margin: 8px 0 0;
+}
+.error {
+  color: var(--mat-sys-error);
+}
+.info {
+  color: var(--mat-sys-primary);
+}
