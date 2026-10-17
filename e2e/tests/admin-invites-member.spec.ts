@@ -24,6 +24,7 @@ async function signIn(page: Page, email: string, password: string): Promise<void
 
 /** Journey 1 (docs/testing.md §3) plus journey 5's "no access by URL" check for members. */
 test('admin invites a member, who sets a password, signs in and cannot reach admin pages', async ({ page }) => {
+  test.slow(); // first pages compiled by a cold dev server
   const { email: adminEmail } = JSON.parse(readFileSync(adminFile, 'utf8')) as { email: string };
   const memberEmail = `e2e-dev-${Date.now()}@example.com`;
 

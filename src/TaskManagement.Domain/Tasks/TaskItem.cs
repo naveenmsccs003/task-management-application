@@ -2,6 +2,13 @@ using TaskManagement.Domain.Common;
 
 namespace TaskManagement.Domain.Tasks;
 
+/// <summary>Which allocated-hour notification is due (FR-TIME-06/07).</summary>
+public enum AllocationAlert
+{
+    Warning,
+    Reached,
+}
+
 /// <summary>The editable fields of a task (FR-TASK-03), validated by the application layer before they get here.</summary>
 public sealed record TaskDetails(
     string Title,
@@ -87,6 +94,12 @@ public sealed class TaskItem
     public List<string> Labels { get; private set; }
 
     public int CurrentRevision { get; private set; }
+
+    /// <summary>Revision for which the allocated-hour warning was sent (once per revision, WQ2).</summary>
+    public int? WarnNotifiedRevision { get; private set; }
+
+    /// <summary>Revision for which the "allocated hours reached" notification was sent (FR-TIME-07).</summary>
+    public int? LimitNotifiedRevision { get; private set; }
 
     /// <summary>When work first started (set by the Start action). The algorithm flag is locked after that (T16).</summary>
     public DateTimeOffset? FirstStartedAt { get; private set; }
@@ -252,6 +265,35 @@ public sealed class TaskItem
 
     public void RecordChecklistTemplate(Guid templateId) => ChecklistTemplateId = templateId;
 
+    /// <summary>
+    /// Decides whether an allocated-hour notification is due for the time spent so far, and records it so it is sent once
+    /// per revision. Reaching the limit also counts as the warning, so a member is never warned after the limit message.
+    /// Unestimated tasks never notify (edge case 16).
+    /// </summary>
+    public AllocationAlert? CheckAllocation(long spentSeconds, int warningPercent)
+    {
+        if (AllocatedMinutes is not { } minutes || minutes <= 0)
+        {
+            return null;
+        }
+
+        var limit = minutes * 60L;
+        if (spentSeconds >= limit && LimitNotifiedRevision != CurrentRevision)
+        {
+            LimitNotifiedRevision = CurrentRevision;
+            WarnNotifiedRevision = CurrentRevision;
+            return AllocationAlert.Reached;
+        }
+
+        if (spentSeconds * 100 >= limit * warningPercent && spentSeconds < limit && WarnNotifiedRevision != CurrentRevision)
+        {
+            WarnNotifiedRevision = CurrentRevision;
+            return AllocationAlert.Warning;
+        }
+
+        return null;
+    }
+
     /// <summary>T3: the assignee submits an algorithm (the submission itself is a separate, immutable record).</summary>
     public Result SubmitAlgorithm(Guid by, DateTimeOffset now) => Transition(TaskAction.SubmitAlgorithm, TaskItemStatus.AlgorithmSubmitted, by, null, now);
 
@@ -346,6 +388,13 @@ public sealed class TaskItem
         Priority = details.Priority;
         StartDate = details.StartDate;
         DueDate = details.DueDate;
+        if (details.AllocatedMinutes != AllocatedMinutes)
+        {
+            // WQ2: a new allocation is judged afresh, so an already-exceeded task can notify again.
+            WarnNotifiedRevision = null;
+            LimitNotifiedRevision = null;
+        }
+
         AllocatedMinutes = details.AllocatedMinutes;
         AlgorithmRequired = details.AlgorithmRequired;
         Labels = NormalizeLabels(details.Labels);

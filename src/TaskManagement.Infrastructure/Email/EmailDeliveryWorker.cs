@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using TaskManagement.Application.Notifications;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Infrastructure.Persistence;
 
@@ -28,7 +29,9 @@ public sealed partial class EmailDeliveryWorker(
         {
             try
             {
-                await ProcessDueAsync(stoppingToken);
+                await using var scope = scopeFactory.CreateAsyncScope();
+                await scope.ServiceProvider.GetRequiredService<JobRecorder>()
+                    .RunAsync(JobRecorder.EmailDelivery, () => ProcessDueAsync(stoppingToken), processed => $"{processed} emails processed", stoppingToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {

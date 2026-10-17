@@ -4,6 +4,7 @@ using TaskManagement.Application.Audit;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Settings;
 using TaskManagement.Domain.Common;
+using TaskManagement.Domain.Identity;
 
 namespace TaskManagement.Application.Identity;
 
@@ -16,6 +17,7 @@ public sealed class ResetPasswordHandler(
     PasswordTokenIssuer tokenIssuer,
     SettingsService settingsService,
     SessionValidator sessions,
+    AccountEmails emails,
     IAuditLog auditLog,
     TimeProvider timeProvider)
 {
@@ -47,6 +49,12 @@ public sealed class ResetPasswordHandler(
         await tokenIssuer.RevokeAllAsync(user.Id, now, cancellationToken);
         token.MarkUsed(now);
         auditLog.Record("auth.password_set", "User", user.Id.ToString(), new AuditChanges().Set("via", token.Purpose.ToString()));
+        if (token.Purpose == PasswordTokenPurpose.Reset)
+        {
+            // An invite sets the first password; only a reset changes an existing one.
+            emails.QueuePasswordChanged(user);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         sessions.Evict(user.Id);
         return Result.Success();

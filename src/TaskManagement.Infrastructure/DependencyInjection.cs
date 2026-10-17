@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Identity;
+using TaskManagement.Application.Notifications;
 using TaskManagement.Infrastructure.Email;
 using TaskManagement.Infrastructure.Identity;
 using TaskManagement.Infrastructure.Jobs;
+using TaskManagement.Infrastructure.Notifications;
 using TaskManagement.Infrastructure.Persistence;
 using TaskManagement.Infrastructure.Seeding;
 
@@ -31,7 +33,10 @@ public static class DependencyInjection
             }
 
             DbContextOptionsSetup.Configure(options, connectionString);
+            options.AddInterceptors(serviceProvider.GetRequiredService<NotificationPublishingInterceptor>());
         });
+        services.TryAddSingleton<INotificationPublisher, NullNotificationPublisher>();
+        services.AddScoped<NotificationPublishingInterceptor>();
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<DataSeeder>();
 
@@ -53,6 +58,12 @@ public static class DependencyInjection
         if (configuration.GetValue(EmailOptions.Section + ":BackgroundWorkerEnabled", true))
         {
             services.AddHostedService(sp => sp.GetRequiredService<EmailDeliveryWorker>());
+        }
+
+        services.AddSingleton<CleanupWorker>();
+        if (configuration.GetValue("Jobs:CleanupEnabled", true))
+        {
+            services.AddHostedService(sp => sp.GetRequiredService<CleanupWorker>());
         }
 
         services.AddSingleton<SessionMonitorWorker>();

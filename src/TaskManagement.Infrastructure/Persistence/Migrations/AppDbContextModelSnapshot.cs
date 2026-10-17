@@ -599,6 +599,100 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("link");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_notifications_created_at");
+
+                    b.HasIndex("RecipientId")
+                        .HasDatabaseName("ix_notifications_unread")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex("RecipientId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_notifications_recipient_id_created_at");
+
+                    b.ToTable("notifications", "notifications", t =>
+                        {
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'AlgorithmSubmitted', 'AlgorithmApproved', 'AlgorithmRejected', 'AllocationWarning', 'AllocationReached', 'SessionAutoClosed')");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Notifications.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("category");
+
+                    b.Property<bool>("EmailEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_enabled");
+
+                    b.HasKey("UserId", "Category")
+                        .HasName("pk_notification_preferences");
+
+                    b.ToTable("notification_preferences", "notifications", t =>
+                        {
+                            t.HasCheckConstraint("ck_notification_preferences_category", "category IN ('Account', 'Assignment', 'Algorithm', 'Time')");
+                        });
+                });
+
             modelBuilder.Entity("TaskManagement.Domain.Operations.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -635,6 +729,40 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_idempotency_keys_created_at");
 
                     b.ToTable("idempotency_keys", "ops");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Operations.JobRun", b =>
+                {
+                    b.Property<string>("JobName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("job_name");
+
+                    b.Property<DateTimeOffset>("LastFinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_finished_at");
+
+                    b.Property<string>("LastMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_message");
+
+                    b.Property<DateTimeOffset>("LastStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_started_at");
+
+                    b.Property<bool>("LastSucceeded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("last_succeeded");
+
+                    b.Property<DateTimeOffset?>("LastSucceededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_succeeded_at");
+
+                    b.HasKey("JobName")
+                        .HasName("pk_job_runs");
+
+                    b.ToTable("job_runs", "ops");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Projects.Project", b =>
@@ -1109,6 +1237,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("labels");
 
+                    b.Property<int?>("LimitNotifiedRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("limit_notified_revision");
+
                     b.Property<int>("Number")
                         .HasColumnType("integer")
                         .HasColumnName("number");
@@ -1162,6 +1294,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.Property<int?>("WarnNotifiedRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("warn_notified_revision");
 
                     b.HasKey("Id")
                         .HasName("pk_tasks");
@@ -1492,6 +1628,26 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_users_roles_global_role_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Notifications.Notification", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_recipient_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.Notifications.NotificationPreference", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_preferences_users_user_id");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Projects.Project", b =>

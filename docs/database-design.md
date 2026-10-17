@@ -156,6 +156,8 @@ Unique (project_id, user_id) where `removed_at IS NULL`. Membership history is k
 
 Indexes: (project_id, status); (assignee_id, status); (due_date) where status not in (`Approved`,`Closed`,`Cancelled`); GIN trigram on title for search (`pg_trgm`).
 
+*Phase 7 additions:* `warn_notified_revision`, `limit_notified_revision` (allocated-hour notifications once per revision; both reset when the allocation changes, WQ2).
+
 *Phase 6 additions:* `algorithm_approved_submission_id` (FK), `checklist_template_id` (the template copied at creation). `task_status_history.actor_id` is nullable: null marks a change made by the system (a session auto-closed by the job). `algorithm_submissions` has a unique partial index on `task_id` where `decision = 'Pending'`, so only one version waits for a decision. `task_checklist_items.source_template_item_id` has no foreign key on purpose: templates (and their items) can be edited freely after being copied (FR-CHK-02). `projects.default_checklist_template_id` is new (FK). `ops.idempotency_keys` stores `endpoint` as method + path and `response_body` as jsonb; `request_hash` is not stored (a reused key is detected by endpoint).
 
 *Phase 5 implementation notes:* `key` (`TMA-42`) is stored (unique) because project keys never change; `labels` is a `text[]` (max 10, 30 characters each); `first_started_at` (set by Start, Phase 6) locks the "algorithm required" flag; `cancelled_at` / `cancelled_by` sit next to `cancel_reason`; `start_date` ≤ `due_date` is a CHECK constraint. `is_overdue` is not stored yet — Overdue is computed at query time (due date before today in UTC, task still open) until the daily job arrives in Phase 8. `algorithm_approved_submission_id`, `approved_revision`, the notification-revision columns, `gitlab_issue_closed`, `original_due_date` handling for extensions and `closed_at/closed_by` arrive with their phases. The trigram index is on `lower(title)` to match the case-insensitive search.
@@ -226,9 +228,9 @@ Index: (task_id, revision); (user_id, started_at) for timesheets.
 
 ### 3.7 `notifications`
 
-**`outbox_messages`**: id, type, payload (jsonb), occurred_at, processed_at, attempts, next_attempt_at, last_error. Index on (processed_at, next_attempt_at).
+**`outbox_messages`**: id, type, payload (jsonb), occurred_at, processed_at, attempts, next_attempt_at, last_error. Index on (processed_at, next_attempt_at). *Not created (Phase 7 decision):* notifications and their `email_deliveries` rows are written directly in the business transaction, so they already are the outbox — nothing can be lost or produced for a rolled-back change, and the email worker delivers with retries. A separate outbox table would only add a dispatcher step. Real-time pushes happen after the commit and are best effort (clients also poll).
 
-**`notifications`**: id, recipient_id, type, title, body, link (relative app URL), project_id, task_id, created_at, read_at. Index (recipient_id, created_at desc); partial index (recipient_id) where `read_at IS NULL`.
+**`notifications`**: id, recipient_id, type, title, body, link (relative app URL), project_id, task_id, created_at, read_at. Index (recipient_id, created_at desc); partial index (recipient_id) where `read_at IS NULL`. *Implemented in Phase 7*, plus an index on created_at for the 180-day clean-up.
 
 **`email_deliveries`**: id, recipient_email, subject, body_html, body_text, status (`Pending`, `Sent`, `Failed`), attempts, next_attempt_at, last_error, sent_at. Reset-link emails are deleted (or body cleared) right after sending so tokens are not kept in the database.
 
@@ -288,7 +290,7 @@ Indexes: (occurred_at); (entity_type, entity_id); (actor_id, occurred_at); (proj
 
 **`idempotency_keys`**: key, user_id, endpoint, request_hash, response_status, response_body (jsonb), created_at. PK (user_id, key). Cleaned after 24 hours.
 
-**`job_runs`**: job_name, started_at, finished_at, succeeded, message — for the Admin health page.
+**`job_runs`**: job_name, started_at, finished_at, succeeded, message — for the Admin health page. *Implemented in Phase 7 as one row per job* (job_name PK, last_started_at, last_finished_at, last_succeeded, last_succeeded_at, last_message), updated on every run; history is in the logs.
 
 **Data Protection keys** are **not** stored in this database. They live on a protected volume (or a cloud key store) and are encrypted at rest with a certificate/KMS, so a database dump alone cannot decrypt GitLab tokens or MFA keys.
 
@@ -318,4 +320,4 @@ Indexes: (occurred_at); (entity_type, entity_id); (actor_id, occurred_at); (proj
 ## 7. Backups and retention
 
 - Production: daily full backup + WAL archiving for point-in-time recovery (NFR-REL-03). Attachment storage backed up/versioned separately.
-- Retention: all business data kept (Q11). Audit logs at least 1 year (setting). Notifications older than 180 days and sent emails older than 30 days purged by the cleanup job.
+- Retention: all business data kept (Q11). Notifications older than 180 days, sent emails older than 30 days and permanently failed emails older than 90 days are removed by the hourly clean-up job. Audit logs are append-only for the application, so old entries (at least 1 year) are removed only by the database owner with `deploy/db/purge-audit-logs.sql -v retention_days=N` (N ≥ 365), which records the purge itself as an audit entry.

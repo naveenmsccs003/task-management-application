@@ -204,6 +204,8 @@ Downloads of files with scan status other than `Clean` return 409 (`attachment.n
 | POST | `/notifications/{id}/read` · `/notifications/read-all` | own |
 | WS | `/hubs/notifications` | signed in (SignalR) |
 
+**Implemented in Phase 7**, with paging on `GET /notifications` (`unreadOnly`, `page`, `pageSize`, newest first) and `GET /notifications/unread-count` returning `{ count }`. Marking someone else's notification answers 404. The hub only sends: message `notification` with the same shape as a list item (`id, type, category, title, body, link, createdAt, isRead`), to the recipient's own connections. `GET/PUT /me/notification-preferences` (`[{ category, emailEnabled }]`; categories `Account` — mandatory, cannot be turned off — `Assignment`, `Algorithm`, `Time`) are implemented too.
+
 ### 4.11 GitLab
 
 | Method | Path | Permission |
@@ -228,7 +230,7 @@ Downloads of files with scan status other than `Clean` return 409 (`attachment.n
 | GET | same `+ ?format=csv` | `reports.export` |
 | GET | `/audit-logs?from=&to=&actorId=&entityType=&entityId=&action=` | `audit.view` |
 | GET | `/projects/{id}/audit-logs` | `audit.view-project` |
-| GET | `/admin/system-status` | `system.health` — jobs, email queue, integrations |
+| GET | `/admin/system-status` | `system.health` — jobs, email queue, integrations (Phase 7: last run of each background job, email queue counts and the 20 most recent permanent failures) |
 | GET | `/health/live` · `/health/ready` | anonymous, minimal body |
 | GET | `/system/info` | anonymous — `{ name, version, serverTimeUtc }` (implemented in Phase 3) |
 

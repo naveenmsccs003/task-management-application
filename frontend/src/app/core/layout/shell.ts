@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ActiveSessionService } from '../work/active-session.service';
 import { formatClock } from '../time-format';
 
 @Component({
   selector: 'app-shell',
-  imports: [MatButtonModule, MatMenuModule, MatToolbarModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [MatBadgeModule, MatButtonModule, MatMenuModule, MatToolbarModule, RouterLink, RouterLinkActive, RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -38,8 +40,25 @@ import { formatClock } from '../time-format';
           @if (auth.hasPermission('audit.view')) {
             <a mat-button routerLink="/admin/audit" routerLinkActive="active">Audit log</a>
           }
+          @if (auth.hasPermission('system.health')) {
+            <a mat-button routerLink="/admin/system-status" routerLinkActive="active">System</a>
+          }
         </nav>
         <span class="spacer"></span>
+        @if (auth.hasPermission('notifications.view', 'Own')) {
+          <a
+            mat-button
+            routerLink="/notifications"
+            routerLinkActive="active"
+            [matBadge]="notifications.unreadCount()"
+            [matBadgeHidden]="!notifications.unreadCount()"
+            matBadgeColor="warn"
+            [attr.aria-label]="'Notifications, ' + notifications.unreadCount() + ' unread'"
+            data-testid="notifications-link"
+          >
+            Notifications
+          </a>
+        }
         <button mat-button [matMenuTriggerFor]="userMenu" aria-label="Account menu">{{ me.fullName }}</button>
         <mat-menu #userMenu="matMenu">
           <a mat-menu-item routerLink="/profile">My profile</a>
@@ -126,6 +145,7 @@ import { formatClock } from '../time-format';
 export class Shell {
   protected readonly auth = inject(AuthService);
   protected readonly activeSession = inject(ActiveSessionService);
+  protected readonly notifications = inject(NotificationsService);
   private readonly router = inject(Router);
 
   constructor() {
@@ -133,8 +153,10 @@ export class Shell {
     effect(() => {
       if (this.auth.me()) {
         void this.activeSession.refresh();
+        void this.notifications.connect();
       } else {
         this.activeSession.clear();
+        void this.notifications.disconnect();
       }
     });
   }

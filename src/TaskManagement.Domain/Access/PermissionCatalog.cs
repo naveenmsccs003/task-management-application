@@ -36,6 +36,8 @@ public static class PermissionCatalog
     public const string ChecklistsComplete = "checklists.complete";
     public const string TimeView = "time.view";
     public const string TimeAdjust = "time.adjust";
+    public const string NotificationsView = "notifications.view";
+    public const string SystemHealth = "system.health";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
     public static IReadOnlyList<string> AdminProtected { get; } = [RolesManage, MembersCreate];
@@ -119,7 +121,7 @@ public static class PermissionCatalog
         new("attachments.delete", "Attachments", "Delete attachments", null, P, P, O, null),
 
         // Notifications, reports, audit, integration, administration
-        new("notifications.view", "Notifications", "View own notifications", O, O, O, O, O),
+        new(NotificationsView, "Notifications", "View own notifications", O, O, O, O, O),
         new("dashboard.view", "Reports", "View the role dashboard", G, P, P, O, P),
         new("reports.view", "Reports", "View reports", G, P, P, O, P),
         new("reports.export", "Reports", "Export reports as CSV", G, P, P, null, null),
@@ -127,7 +129,7 @@ public static class PermissionCatalog
         new("audit.view-project", "Audit", "View a project's audit entries", G, P, P, null, null),
         new("gitlab.connections.manage", "GitLab", "Configure GitLab connections and tokens", G, null, null, null, null),
         new("gitlab.import", "GitLab", "Link projects and import GitLab issues", null, P, P, null, null),
-        new("system.health", "Administration", "View detailed health, job and email status", G, null, null, null, null),
+        new(SystemHealth, "Administration", "View detailed health, job and email status", G, null, null, null, null),
     ];
 
     public static bool Contains(string code) => All.Any(e => e.Code == code);

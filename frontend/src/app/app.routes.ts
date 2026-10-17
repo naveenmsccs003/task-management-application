@@ -88,6 +88,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/tasks/task-form').then((m) => m.TaskForm),
   },
   {
+    path: 'notifications',
+    title: 'Notifications · Task Management',
+    canActivate: [permissionGuard('notifications.view', 'Own')],
+    loadComponent: () => import('./features/notifications/notification-list').then((m) => m.NotificationList),
+  },
+  {
     path: 'checklist-templates',
     title: 'Checklist templates · Task Management',
     canActivate: [permissionGuard('checklists.manage')],
@@ -125,6 +131,12 @@ export const routes: Routes = [
         title: 'Settings · Task Management',
         canActivate: [permissionGuard('settings.manage')],
         loadComponent: () => import('./features/admin/settings/settings').then((m) => m.Settings),
+      },
+      {
+        path: 'system-status',
+        title: 'System status · Task Management',
+        canActivate: [permissionGuard('system.health')],
+        loadComponent: () => import('./features/admin/system-status/system-status').then((m) => m.SystemStatusPage),
       },
       {
         path: 'audit',

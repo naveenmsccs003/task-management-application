@@ -59,6 +59,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("App:PublicBaseUrl", "https://tma.test");
         builder.UseSetting("Email:BackgroundWorkerEnabled", "false"); // tests call FlushEmailsAsync instead
         builder.UseSetting("Jobs:SessionMonitorEnabled", "false"); // tests run the monitor explicitly
+        builder.UseSetting("Jobs:CleanupEnabled", "false");
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);
@@ -102,8 +103,14 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return client;
     }
 
-    /// <summary>Runs the email worker once so queued emails reach <see cref="Emails"/>.</summary>
-    public Task FlushEmailsAsync() => Services.GetRequiredService<EmailDeliveryWorker>().ProcessDueAsync(CancellationToken.None);
+    /// <summary>Runs the email worker until no due email is left, so queued emails reach <see cref="Emails"/>.</summary>
+    public async Task FlushEmailsAsync()
+    {
+        var worker = Services.GetRequiredService<EmailDeliveryWorker>();
+        while (await worker.ProcessDueAsync(CancellationToken.None) > 0)
+        {
+        }
+    }
 
     public async Task<T> WithDbAsync<T>(Func<AppDbContext, Task<T>> action)
     {

@@ -6,6 +6,7 @@ using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Identity;
 using TaskManagement.Application.Members;
+using TaskManagement.Application.Notifications;
 using TaskManagement.Application.Projects;
 using TaskManagement.Application.Settings;
 using TaskManagement.Application.Tasks;
@@ -61,6 +62,12 @@ public static class DependencyInjection
         services.AddScoped<WorkService>();
         services.AddScoped<TimeService>();
         services.AddScoped<SessionMonitor>();
+
+        // Notifications and operations
+        services.AddScoped<Notifier>();
+        services.AddScoped<NotificationService>();
+        services.AddScoped<JobRecorder>();
+        services.AddScoped<RetentionCleanup>();
 
         return services;
     }

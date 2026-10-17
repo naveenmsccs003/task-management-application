@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TaskManagement.Application.Notifications;
 using TaskManagement.Application.Work;
 
 namespace TaskManagement.Infrastructure.Jobs;
@@ -35,7 +36,9 @@ public sealed partial class SessionMonitorWorker(IServiceScopeFactory scopeFacto
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<SessionMonitor>().RunOnceAsync(cancellationToken);
+        var monitor = scope.ServiceProvider.GetRequiredService<SessionMonitor>();
+        return await scope.ServiceProvider.GetRequiredService<JobRecorder>()
+            .RunAsync(JobRecorder.SessionMonitor, () => monitor.RunOnceAsync(cancellationToken), closed => $"{closed} sessions auto-closed", cancellationToken);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The session monitor run failed.")]

@@ -3,9 +3,11 @@ using TaskManagement.Application.Access;
 using TaskManagement.Application.Audit;
 using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
+using TaskManagement.Application.Notifications;
 using TaskManagement.Application.Work;
 using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Common;
+using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Projects;
 using TaskManagement.Domain.Tasks;
 using TaskManagement.Domain.Time;
@@ -26,6 +28,7 @@ public sealed class TaskCommands(
     ChecklistTemplates templates,
     TaskChecklist checklist,
     WorkService work,
+    Notifier notifier,
     IAuditLog auditLog,
     TimeProvider timeProvider)
 {
@@ -212,6 +215,17 @@ public sealed class TaskCommands(
         {
             return result.Error!;
         }
+
+        // FR-ASG-06: the assignee and the project's Team Leaders hear about it.
+        var assigneeName = await db.Users.Where(u => u.Id == command.AssigneeId).Select(u => u.FullName).FirstAsync(cancellationToken);
+        var link = $"/tasks/{task.Id}";
+        await notifier.NotifyAsync(
+            [command.AssigneeId], NotificationType.TaskAssigned, $"{task.Key} was assigned to you",
+            $"“{task.Title}” in {visible.Project.Name} is now yours. Due {task.DueDate:yyyy-MM-dd}.", link, task.ProjectId, task.Id, cancellationToken);
+        var leads = (await notifier.ProjectLeadsAsync(task.ProjectId, cancellationToken)).Where(id => id != command.AssigneeId);
+        await notifier.NotifyAsync(
+            leads, NotificationType.TaskAssigned, $"{task.Key} was assigned to {assigneeName}",
+            $"“{task.Title}” in {visible.Project.Name} was assigned to {assigneeName}.", link, task.ProjectId, task.Id, cancellationToken);
 
         auditLog.Record("task.assigned", "Task", task.Id.ToString(), new AuditChanges()
             .Set("assigneeId", command.AssigneeId)

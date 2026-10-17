@@ -13,10 +13,11 @@ import { applyServerErrors, controlError } from '../../core/api/form-errors';
 import { Me } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { timeZones } from '../../core/time-zones';
+import { NotificationPreferences } from '../notifications/notification-preferences';
 
 @Component({
   selector: 'app-profile',
-  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule],
+  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule, NotificationPreferences],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>My profile</h1>
@@ -66,6 +67,7 @@ import { timeZones } from '../../core/time-zones';
           </form>
         </mat-card-content>
       </mat-card>
+      <app-notification-preferences />
     </div>
   `,
   styles: `

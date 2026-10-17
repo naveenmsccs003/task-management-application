@@ -81,9 +81,13 @@ test('PM sets up a task, TL assigns and approves the algorithm, developer works 
   await expect(page.getByText('0 of 1 required items done.')).toBeVisible();
   await signOut(page);
 
-  // The developer finds the task, comments and submits an algorithm.
+  // The developer sees the assignment notification, opens it, comments and submits an algorithm.
   await signIn(page, dev.email, password);
-  await page.getByRole('link', { name: 'Tasks' }).click();
+  await expect(page.getByTestId('notifications-link')).toHaveAccessibleName(/Notifications, [1-9]\d* unread/);
+  await page.getByTestId('notifications-link').click();
+  await page.getByRole('button', { name: new RegExp(`${key}-1 was assigned to you`) }).click();
+  await expect(page.getByRole('heading', { name: `${key}-1 · Build the sign-up form` })).toBeVisible();
+  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
   await page.getByRole('link', { name: `${key}-1` }).click();
   await expect(page.getByTestId('task-status')).toHaveText('Awaiting algorithm');
   await expect(page.getByRole('button', { name: 'Assign', exact: true })).toHaveCount(0);

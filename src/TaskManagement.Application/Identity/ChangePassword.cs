@@ -16,6 +16,7 @@ public sealed class ChangePasswordHandler(
     PasswordTokenIssuer tokenIssuer,
     SettingsService settingsService,
     SessionValidator sessions,
+    AccountEmails emails,
     IAuditLog auditLog,
     TimeProvider timeProvider)
 {
@@ -45,6 +46,7 @@ public sealed class ChangePasswordHandler(
         user.SetPasswordHash(passwordHasher.Hash(command.NewPassword!), now);
         await tokenIssuer.RevokeAllAsync(user.Id, now, cancellationToken);
         auditLog.Record("auth.password_changed", "User", user.Id.ToString());
+        emails.QueuePasswordChanged(user);
         await db.SaveChangesAsync(cancellationToken);
         sessions.Evict(user.Id);
         return new SignedInUser(user.Id, user.SecurityStamp);

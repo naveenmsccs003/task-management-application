@@ -59,6 +59,12 @@ public interface IAppDbContext
 
     DbSet<IdempotencyRecord> IdempotencyRecords { get; }
 
+    DbSet<Notification> Notifications { get; }
+
+    DbSet<NotificationPreference> NotificationPreferences { get; }
+
+    DbSet<JobRun> JobRuns { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);

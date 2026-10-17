@@ -27,6 +27,27 @@ public sealed class AccountEmails(IAppDbContext db, IOptions<AppOptions> options
             LinkFor("reset-password", token),
             lifetime);
 
+    /// <summary>Security notice after a password change or reset (FR-NOT-03). Mandatory; contains no link or secret.</summary>
+    public void QueuePasswordChanged(User user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        var product = options.Value.ProductName;
+        const string Notice = "The password for your account was just changed. If this was not you, reset your password straight away and tell your administrator.";
+        var text = $"""
+            Hello {user.FullName},
+
+            {Notice}
+
+            {product}
+            """;
+        var html = $"""
+            <p>Hello {WebUtility.HtmlEncode(user.FullName)},</p>
+            <p>{WebUtility.HtmlEncode(Notice)}</p>
+            <p>{WebUtility.HtmlEncode(product)}</p>
+            """;
+        db.EmailDeliveries.Add(EmailDelivery.Queue(user.Email, $"Your {product} password was changed", text, html, containsSecret: false, timeProvider.GetUtcNow()));
+    }
+
     private string LinkFor(string path, string token) =>
         $"{options.Value.PublicBaseUrl.TrimEnd('/')}/{path}?token={Uri.EscapeDataString(token)}";
 

@@ -21,8 +21,9 @@ export default defineConfig({
   retries: process.env['CI'] ? 1 : 0,
   reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   timeout: 60_000,
-  // The Angular dev server compiles each lazy-loaded page on its first visit, which can take a few seconds.
-  expect: { timeout: 10_000 },
+  // A cold Angular dev server (always the case in CI) compiles each lazy-loaded page on its first visit, which can take
+  // well over ten seconds on a busy machine.
+  expect: { timeout: 20_000 },
   use: {
     baseURL: 'http://localhost:4200',
     trace: 'retain-on-failure',

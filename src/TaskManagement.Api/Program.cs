@@ -5,9 +5,11 @@ using TaskManagement.Api.Auth;
 using TaskManagement.Api.Cli;
 using TaskManagement.Api.Common;
 using TaskManagement.Api.Endpoints;
+using TaskManagement.Api.Notifications;
 using TaskManagement.Application;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Identity;
+using TaskManagement.Application.Notifications;
 using TaskManagement.Infrastructure;
 using TaskManagement.Infrastructure.Persistence;
 using TaskManagement.Infrastructure.Seeding;
@@ -47,6 +49,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddApiAuth(builder.Configuration);
+// Same JSON shape as the REST API: camelCase properties, enums as strings.
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+    options.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -101,6 +107,8 @@ api.MapAdministrationEndpoints();
 api.MapProjectEndpoints();
 api.MapTaskEndpoints();
 api.MapWorkEndpoints();
+api.MapNotificationEndpoints();
+app.MapHub<NotificationHub>(NotificationHub.Path);
 
 await app.RunAsync();
 return 0;
