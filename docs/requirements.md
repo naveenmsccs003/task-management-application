@@ -378,7 +378,7 @@ The workflow and tests must handle these.
 15. Allocated hours changed by TL after the warning was sent → notifications re-evaluated against the new value.
 16. Allocated hours = 0 or not set → no limit notifications; shown as "not estimated".
 17. Task reassigned while old assignee is working → old session closed with end reason Reassigned.
-18. Server clock correction → we rely on the database server's UTC time for both start and end.
+18. Server clock correction → servers are NTP-synchronized and use UTC; a negative duration is never stored (end time is clamped to the start time and the event is logged).
 
 **Workflow**
 

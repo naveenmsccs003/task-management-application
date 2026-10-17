@@ -106,12 +106,12 @@ sequenceDiagram
     participant DB as PostgreSQL
     Dev->>API: POST /tasks/{id}/start (Idempotency-Key)
     API->>API: Check permission, assignee, state = Ready/Stopped/Revision
-    API->>DB: BEGIN; INSERT work_session(started_at = now() UTC); UPDATE task status; INSERT audit + outbox; COMMIT
+    API->>DB: BEGIN; INSERT work_session(started_at = server UTC time); UPDATE task status; INSERT audit + outbox; COMMIT
     DB-->>API: unique index violation? → 409 "active session exists"
     API-->>Dev: 200 session + task state
 ```
 
-1. Only the database's clock (`now()` in UTC) is used for start and end times.
+1. Only the server's UTC clock (the application's `TimeProvider`, NTP-synchronized) is used for start and end times. Client times are ignored. (See architecture decision D5.)
 2. Two partial unique indexes guarantee: one active session per member, one active session per task.
 3. Start/Resume/Pause/Stop accept an `Idempotency-Key` header; a repeated key returns the original result.
 4. A member with an active session on task A who tries to start task B gets **409** ("Pause or stop TMA-12 first"). *(Alternative: auto-pause A. Default: reject.)*
