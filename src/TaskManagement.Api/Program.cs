@@ -56,6 +56,8 @@ builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublish
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAttachmentUploads(builder.Configuration);
+builder.Services.AddGitLabEndpoints();
+builder.Services.AddSingleton<TaskManagement.Application.GitLab.ITokenProtector, TaskManagement.Api.GitLab.DataProtectionTokenProtector>();
 
 // Q9: uploads must be malware-scanned outside development.
 if (builder.Environment.IsProduction()
@@ -122,6 +124,8 @@ api.MapWorkEndpoints();
 api.MapNotificationEndpoints();
 api.MapReviewEndpoints();
 api.MapAttachmentEndpoints();
+api.MapGitLabEndpoints();
+app.MapGitLabWebhook();
 app.MapHub<NotificationHub>(NotificationHub.Path);
 
 await app.RunAsync();

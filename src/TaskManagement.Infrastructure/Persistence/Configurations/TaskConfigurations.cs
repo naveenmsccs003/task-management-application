@@ -29,6 +29,7 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Property(t => t.Priority).HasConversion<string>().HasMaxLength(20);
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(30);
         builder.Property(t => t.Labels).HasColumnType("text[]");
+        builder.Property(t => t.GitLabIssueClosed).HasColumnName("gitlab_issue_closed");
         builder.Property(t => t.CancelReason).HasMaxLength(TaskItem.ReasonMaxLength);
         builder.Property(t => t.Version).IsRowVersion();
 

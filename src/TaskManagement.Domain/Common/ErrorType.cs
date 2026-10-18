@@ -16,4 +16,7 @@ public enum ErrorType
 
     /// <summary>An upload whose file type is not allowed (HTTP 415).</summary>
     UnsupportedMediaType,
+
+    /// <summary>An external system (GitLab) failed or refused the request (HTTP 502).</summary>
+    Upstream,
 }

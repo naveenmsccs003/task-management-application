@@ -1,10 +1,10 @@
 # Known Issues, Risks and Open Decisions
 
-Last updated: 2026-10-17 (Phase 9)
+Last updated: 2026-10-18 (Phase 10)
 
 ## Open decisions
 
-None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phases 4–8 (authentication and administration; projects, tasks, comments; algorithms, checklists, work sessions, time; notifications; review, requests, delays, overdue) approved 2026-10-17. Phase 9 is awaiting approval.
+None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phases 4–9 (authentication and administration; projects, tasks, comments; algorithms, checklists, work sessions, time; notifications; review, requests, delays, overdue; attachments) approved 2026-10-17. Phase 10 is awaiting approval.
 
 ## Environment notes (development machine)
 
@@ -56,6 +56,11 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L35 | The uploader is not notified when a file is found infected or cannot be scanned; the file shows "Blocked" on the task page and an `attachment.infected` audit entry is written. | Revisit if users ask. |
 | L36 | Files can be attached to a comment only when it is posted (not by editing it later), and to an algorithm or review only when it is submitted, because those records are immutable once saved. | By design. |
 | L37 | Image and video previews are not audited (a video player requests many ranges of one file); downloads are. Plain-text files are recognized from their first 8 KB. | By design. |
+| L38 | GitLab was tested against a fake GitLab API (integration tests and the end-to-end journey), not a real GitLab instance. | Run the GitLab journey once against a real GitLab (test project, `read_api` token) in the Testing environment before production. |
+| L39 | One internal project links to one GitLab project, and only issues are imported (no merge requests, comments or assignees — Q10). | By design. |
+| L40 | Imported GitLab descriptions are stored and shown as plain text, like all descriptions (see L13); GitLab Markdown and images are not rendered. | With L13. |
+| L41 | The GitLab sync job runs on every app instance (like the other jobs, L25). Two instances syncing the same project at once can both record a run; task changes are protected by the task's concurrency check. | Same as L25. |
+| L42 | GitLab tokens are encrypted with the Data Protection key ring. If the key ring is lost or replaced, saved tokens can no longer be read and must be entered again on Admin → GitLab. | Documented in gitlab-integration.md §2. |
 | L18 | Fixed in Phase 5: the e2e mail helper decoded every email as quoted-printable, which corrupted links whose token started with two hex characters (`?token=9B…`), and two e2e steps could type into a list page's search box before the form page appeared. Both caused occasional false failures. | Resolved. |
 
 ## Risks

@@ -93,12 +93,13 @@ flowchart LR
    | `App__PublicBaseUrl` | Public HTTPS address; used in email links |
    | `Email__SmtpHost`, `Email__SmtpPort`, `Email__SmtpSecurity`, `Email__FromAddress` | SMTP server |
    | `Email__SmtpUserName`, `Email__SmtpPassword` | SMTP credentials (secret) |
-   | `DataProtection__KeysPath` | Protected volume for the keys that encrypt sign-in cookies; must survive restarts and be shared by all instances |
+   | `DataProtection__KeysPath` | Protected volume for the keys that encrypt sign-in cookies and saved GitLab tokens; must survive restarts and be shared by all instances |
    | `DataProtection__CertificatePath`, `DataProtection__CertificatePassword` | Certificate that encrypts those keys at rest (password is a secret) |
    | `Attachments__LocalPath` | Private folder or mounted volume for uploaded files, outside any web root, writable by the app user and backed up (§6). Required: the app refuses to start without it |
    | `Attachments__Scanner` | `ClamAv` (default). `None` is refused in Production (Q9) |
    | `Attachments__ClamAvHost`, `Attachments__ClamAvPort` | clamd address (default `localhost:3310`). clamd's `StreamMaxLength`, `MaxFileSize` and `MaxScanSize` must be at least the largest allowed upload (default video limit 200 MB); a larger file is marked "could not be checked" and cannot be downloaded |
    | `Attachments__UploadsPerMinute` | Uploads per member per minute (default 30) |
+   | `GitLab__SyncInterval` | GitLab sync period (default `00:15:00`). The app needs outbound HTTPS to each GitLab instance; `GitLab__AllowedInsecureHosts` must stay empty in production. Webhooks need `https://<app host>/api/v1/webhooks/gitlab/*` reachable from GitLab (see [gitlab-integration.md](gitlab-integration.md)) |
 
 3. Run migration bundle as `tma_migrator`; the app connects as `tma_app`.
    The reverse proxy must allow request bodies up to the largest upload limit (e.g. nginx `client_max_body_size 1025m`) and should not buffer them to disk twice (`proxy_request_buffering off`).

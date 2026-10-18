@@ -40,6 +40,9 @@ import { formatClock } from '../time-format';
           @if (auth.hasPermission('settings.manage')) {
             <a mat-button routerLink="/admin/settings" routerLinkActive="active">Settings</a>
           }
+          @if (auth.hasPermission('gitlab.connections.manage')) {
+            <a mat-button routerLink="/admin/gitlab" routerLinkActive="active">GitLab</a>
+          }
           @if (auth.hasPermission('audit.view')) {
             <a mat-button routerLink="/admin/audit" routerLinkActive="active">Audit log</a>
           }

@@ -7,6 +7,7 @@ using TaskManagement.Application.Checklists;
 using TaskManagement.Application.Common;
 using TaskManagement.Application.Deadlines;
 using TaskManagement.Application.Delays;
+using TaskManagement.Application.GitLab;
 using TaskManagement.Application.Identity;
 using TaskManagement.Application.Members;
 using TaskManagement.Application.Notifications;
@@ -83,6 +84,10 @@ public static class DependencyInjection
         // Attachments
         services.AddScoped<AttachmentService>();
         services.AddScoped<AttachmentScanning>();
+
+        // GitLab
+        services.AddScoped<GitLabConnections>();
+        services.AddScoped<GitLabImports>();
 
         return services;
     }

@@ -47,6 +47,8 @@ export default defineConfig({
         Auth__PasswordPermitsPerQuarterHour: '1000',
         // Deliver queued emails quickly so tests waiting for invite links stay fast.
         Email__PollInterval: '00:00:01',
+        // The GitLab journey talks to a fake GitLab on this machine over plain http (tests/gitlab-import.spec.ts).
+        GitLab__AllowedInsecureHosts__0: '127.0.0.1',
       },
     },
     {

@@ -13,6 +13,7 @@ import { asApiError } from '../../core/api/api-error';
 import { ActiveSessionService } from '../../core/work/active-session.service';
 import { TaskAttachments } from '../attachments/task-attachments';
 import { TaskAttachmentsStore } from '../attachments/task-attachments.store';
+import { GitLabApi } from '../gitlab/gitlab.api';
 import { ProjectsApi } from '../projects/projects.api';
 import { ProjectMember } from '../projects/projects.models';
 import { TaskAlgorithm } from './task-algorithm';
@@ -54,6 +55,12 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
         }
         @if (t.flags.reassignmentPending) {
           <span class="flag info">Reassignment pending</span>
+        }
+        @if (t.flags.gitLabIssueClosed) {
+          <span class="flag info">GitLab issue closed</span>
+        }
+        @if (t.gitLab?.state === 'Missing') {
+          <span class="flag">GitLab issue missing</span>
         }
       </div>
       @if (t.projectReadOnly) {
@@ -222,6 +229,26 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
             <h2>Description</h2>
             <p class="description">{{ t.description }}</p>
           }
+          @if (t.gitLab; as g) {
+            <p class="muted">
+              Imported from <a [href]="g.webUrl" target="_blank" rel="noopener noreferrer">GitLab issue #{{ g.issueIid }}</a>.
+              GitLab never changes this task's status.
+            </p>
+            @if (g.pendingChanges; as changes) {
+              <div class="gitlab-changes" role="status">
+                <strong>Changed in GitLab since the task left Draft:</strong>
+                @if (changes.title !== null) {
+                  <p>Title: “{{ changes.title }}”</p>
+                }
+                @if (changes.description !== null) {
+                  <p class="description">Description: {{ changes.description }}</p>
+                }
+                @if (can('acceptGitLabChanges')) {
+                  <button mat-stroked-button type="button" (click)="acceptGitLabChanges()" [disabled]="busy()">Accept GitLab changes</button>
+                }
+              </div>
+            }
+          }
         </mat-card-content>
       </mat-card>
 
@@ -336,6 +363,12 @@ type Panel = 'assign' | 'cancel' | 'delete' | 'pause' | 'stop' | null;
     .description {
       white-space: pre-wrap;
     }
+    .gitlab-changes {
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: var(--mat-sys-tertiary-container);
+      color: var(--mat-sys-on-tertiary-container);
+    }
     .columns {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -372,6 +405,7 @@ export class TaskDetail implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly activeSession = inject(ActiveSessionService);
   private readonly attachments = inject(TaskAttachmentsStore);
+  private readonly gitLabApi = inject(GitLabApi);
 
   /** Route parameter. */
   readonly id = input.required<string>();
@@ -436,6 +470,13 @@ export class TaskDetail implements OnInit {
   protected async afterReview(task: Task): Promise<void> {
     await this.apply(task);
     await this.activeSession.refresh();
+  }
+
+  protected async acceptGitLabChanges(): Promise<void> {
+    await this.run(async () => {
+      this.task.set(await firstValueFrom(this.gitLabApi.acceptChanges(this.id())));
+      await this.loadHistory();
+    });
   }
 
   protected allocation(minutes: number | null): string {

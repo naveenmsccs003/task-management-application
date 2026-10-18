@@ -32,6 +32,8 @@ const JOB_LABELS: Record<string, string> = {
   'email-delivery': 'Email delivery (every few seconds)',
   cleanup: 'Clean-up (hourly)',
   'due-date-monitor': 'Due dates and overdue (hourly)',
+  'attachment-scan': 'Attachment malware scan (every 10 seconds)',
+  'gitlab-sync': 'GitLab sync (every 15 minutes)',
 };
 
 /** Background jobs and the email queue for Admins (FR-ADM-01, FR-NOT-05). */

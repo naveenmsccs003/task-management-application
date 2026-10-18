@@ -38,5 +38,7 @@ public sealed record Error
 
     public static Error TooLarge(string code, string message) => new(code, message, ErrorType.TooLarge, null);
 
+    public static Error Upstream(string code, string message) => new(code, message, ErrorType.Upstream, null);
+
     public static Error UnsupportedMediaType(string code, string message) => new(code, message, ErrorType.UnsupportedMediaType, null);
 }

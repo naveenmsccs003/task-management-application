@@ -27,6 +27,7 @@ internal static class ProblemDetailsSetup
         ErrorType.Conflict => StatusCodes.Status409Conflict,
         ErrorType.TooLarge => StatusCodes.Status413PayloadTooLarge,
         ErrorType.UnsupportedMediaType => StatusCodes.Status415UnsupportedMediaType,
+        ErrorType.Upstream => StatusCodes.Status502BadGateway,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown error type."),
     };
 

@@ -105,6 +105,9 @@ public sealed class TaskItem
     /// <summary>Past the due date (in the assignee's time zone) and still open; kept by the due-date job (FR-DL-05).</summary>
     public bool IsOverdue { get; private set; }
 
+    /// <summary>The linked GitLab issue was closed there (FR-IMP-07). Only a flag: GitLab never changes the task's state.</summary>
+    public bool GitLabIssueClosed { get; private set; }
+
     /// <summary>The day the last overdue notification was sent (once per day while overdue).</summary>
     public DateOnly? OverdueNotifiedOn { get; private set; }
 
@@ -501,6 +504,18 @@ public sealed class TaskItem
     {
         DueDate = newDueDate;
         Touch(approvedBy, now);
+    }
+
+    /// <summary>Sets or clears the "GitLab issue closed" flag. Returns true when it changed.</summary>
+    public bool SetGitLabIssueClosed(bool closed)
+    {
+        if (GitLabIssueClosed == closed)
+        {
+            return false;
+        }
+
+        GitLabIssueClosed = closed;
+        return true;
     }
 
     /// <summary>Sets the Overdue flag for <paramref name="today"/> (the assignee's local date). Returns true when it changed.</summary>

@@ -6,6 +6,7 @@ using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
 using TaskManagement.Domain.Checklists;
 using TaskManagement.Domain.Files;
+using TaskManagement.Domain.GitLab;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Operations;
@@ -75,6 +76,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<DelayReport> DelayReports => Set<DelayReport>();
 
     public DbSet<Attachment> Attachments => Set<Attachment>();
+
+    public DbSet<GitLabConnection> GitLabConnections => Set<GitLabConnection>();
+
+    public DbSet<GitLabProjectLink> GitLabProjectLinks => Set<GitLabProjectLink>();
+
+    public DbSet<GitLabIssueLink> GitLabIssueLinks => Set<GitLabIssueLink>();
+
+    public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
 
     public bool IsUniqueViolation(DbUpdateException exception) =>
         exception?.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };

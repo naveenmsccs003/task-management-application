@@ -145,6 +145,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/system-status/system-status').then((m) => m.SystemStatusPage),
       },
       {
+        path: 'gitlab',
+        title: 'GitLab connections · Task Management',
+        canActivate: [permissionGuard('gitlab.connections.manage')],
+        loadComponent: () => import('./features/gitlab/gitlab-connections').then((m) => m.GitLabConnections),
+      },
+      {
         path: 'audit',
         title: 'Audit log · Task Management',
         canActivate: [permissionGuard('audit.view')],

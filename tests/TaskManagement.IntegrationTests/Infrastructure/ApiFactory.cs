@@ -10,6 +10,7 @@ using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Infrastructure.Email;
 using TaskManagement.Infrastructure.Files;
+using TaskManagement.Infrastructure.GitLab;
 using TaskManagement.Infrastructure.Persistence;
 
 namespace TaskManagement.IntegrationTests.Infrastructure;
@@ -28,6 +29,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         ?? throw new InvalidOperationException("The database has not been started yet.");
 
     public FakeEmailTransport Emails { get; } = new();
+
+    public FakeGitLab GitLab { get; } = new();
 
     /// <summary>Private file storage for this host; removed when the host is disposed.</summary>
     public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"tma-files-{Guid.NewGuid():N}");
@@ -69,6 +72,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Attachments:LocalPath", StoragePath);
         builder.UseSetting("Attachments:ScanWorkerEnabled", "false"); // tests call ScanAttachmentsAsync instead
         builder.UseSetting("Attachments:UploadsPerMinute", "10000");
+        builder.UseSetting("GitLab:SyncWorkerEnabled", "false"); // tests call the sync explicitly
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);
@@ -80,6 +84,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddSingleton<IEmailTransport>(Emails);
             services.RemoveAll<IMalwareScanner>();
             services.AddSingleton<IMalwareScanner, FakeMalwareScanner>();
+            services.AddHttpClient(GitLabHttpClient.ClientName).ConfigurePrimaryHttpMessageHandler(() => GitLab);
             ConfigureServices?.Invoke(services);
         });
     }

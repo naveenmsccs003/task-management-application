@@ -479,6 +479,286 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.GitLabConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("base_url");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_checked_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<byte[]>("TokenCiphertext")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_ciphertext");
+
+                    b.Property<string>("TokenHint")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("token_hint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_connections");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_connections_created_by");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_connections_name");
+
+                    b.ToTable("connections", "gitlab", t =>
+                        {
+                            t.HasCheckConstraint("ck_connections_status", "status IN ('Unknown', 'Healthy', 'Unhealthy')");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.GitLabIssueLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<long>("GitLabProjectId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gitlab_project_id");
+
+                    b.Property<DateTimeOffset?>("GitLabUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("gitlab_updated_at");
+
+                    b.Property<long>("IssueId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("issue_id");
+
+                    b.Property<long>("IssueIid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("issue_iid");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("PendingChanges")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("pending_changes");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("WebUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("web_url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issue_links");
+
+                    b.HasIndex("TaskId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_issue_links_task_id");
+
+                    b.HasIndex("ConnectionId", "GitLabProjectId", "IssueIid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_issue_links_connection_id_gitlab_project_id_issue_iid");
+
+                    b.ToTable("issue_links", "gitlab", t =>
+                        {
+                            t.HasCheckConstraint("ck_issue_links_state", "state IN ('Opened', 'Closed', 'Missing')");
+                        });
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.GitLabProjectLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("GitLabProjectId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gitlab_project_id");
+
+                    b.Property<DateTimeOffset?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_synced_at");
+
+                    b.Property<string>("PathWithNamespace")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("path_with_namespace");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<bool>("SyncEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sync_enabled");
+
+                    b.Property<string>("WebUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("web_url");
+
+                    b.Property<byte[]>("WebhookSecretHash")
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("webhook_secret_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_links");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_project_links_created_by");
+
+                    b.HasIndex("ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_links_project_id");
+
+                    b.HasIndex("ConnectionId", "GitLabProjectId")
+                        .HasDatabaseName("ix_project_links_connection_id_gitlab_project_id");
+
+                    b.ToTable("project_links", "gitlab");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.ImportRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CreatedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_count");
+
+                    b.PrimitiveCollection<List<string>>("Errors")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("errors");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_count");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<int>("SkippedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("skipped_count");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<Guid?>("StartedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("started_by");
+
+                    b.Property<int>("UpdatedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_import_runs");
+
+                    b.HasIndex("StartedBy")
+                        .HasDatabaseName("ix_import_runs_started_by");
+
+                    b.HasIndex("ProjectId", "StartedAt")
+                        .HasDatabaseName("ix_import_runs_project_id_started_at");
+
+                    b.ToTable("import_runs", "gitlab", t =>
+                        {
+                            t.HasCheckConstraint("ck_import_runs_kind", "kind IN ('Import', 'Sync', 'Webhook')");
+                        });
+                });
+
             modelBuilder.Entity("TaskManagement.Domain.Identity.PasswordToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -790,7 +1070,7 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.ToTable("notifications", "notifications", t =>
                         {
-                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'AlgorithmSubmitted', 'AlgorithmApproved', 'AlgorithmRejected', 'AllocationWarning', 'AllocationReached', 'SessionAutoClosed', 'SubmittedForReview', 'ReviewApproved', 'RevisionRequested', 'TaskClosed', 'TaskReopened', 'ReassignmentRequested', 'ReassignmentDecided', 'TaskReassigned', 'ExtensionRequested', 'ExtensionDecided', 'DelayReported', 'DueSoon', 'Overdue')");
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'AlgorithmSubmitted', 'AlgorithmApproved', 'AlgorithmRejected', 'AllocationWarning', 'AllocationReached', 'SessionAutoClosed', 'SubmittedForReview', 'ReviewApproved', 'RevisionRequested', 'TaskClosed', 'TaskReopened', 'ReassignmentRequested', 'ReassignmentDecided', 'TaskReassigned', 'ExtensionRequested', 'ExtensionDecided', 'DelayReported', 'DueSoon', 'Overdue', 'GitLabIssueClosed', 'GitLabIssueMissing')");
                         });
                 });
 
@@ -814,7 +1094,7 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
 
                     b.ToTable("notification_preferences", "notifications", t =>
                         {
-                            t.HasCheckConstraint("ck_notification_preferences_category", "category IN ('Account', 'Assignment', 'Algorithm', 'Time', 'Review', 'Requests', 'Deadlines')");
+                            t.HasCheckConstraint("ck_notification_preferences_category", "category IN ('Account', 'Assignment', 'Algorithm', 'Time', 'Review', 'Requests', 'Deadlines', 'GitLab')");
                         });
                 });
 
@@ -1597,6 +1877,10 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("first_started_at");
 
+                    b.Property<bool>("GitLabIssueClosed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("gitlab_issue_closed");
+
                     b.Property<bool>("IsOverdue")
                         .HasColumnType("boolean")
                         .HasColumnName("is_overdue");
@@ -2017,6 +2301,73 @@ namespace TaskManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_attachments_users_uploaded_by");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.GitLabConnection", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_connections_users_created_by");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.GitLabIssueLink", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.GitLab.GitLabConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_links_connections_connection_id");
+
+                    b.HasOne("TaskManagement.Domain.Tasks.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_links_tasks_task_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.GitLabProjectLink", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.GitLab.GitLabConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_links_connections_connection_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_links_users_created_by");
+
+                    b.HasOne("TaskManagement.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_links_projects_project_id");
+                });
+
+            modelBuilder.Entity("TaskManagement.Domain.GitLab.ImportRun", b =>
+                {
+                    b.HasOne("TaskManagement.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_import_runs_projects_project_id");
+
+                    b.HasOne("TaskManagement.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("StartedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_import_runs_users_started_by");
                 });
 
             modelBuilder.Entity("TaskManagement.Domain.Identity.PasswordToken", b =>

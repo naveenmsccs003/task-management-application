@@ -6,7 +6,10 @@ namespace TaskManagement.Application.Tasks;
 public sealed record UserRef(Guid Id, string Name);
 
 /// <summary>Flags shown next to the state (task-workflow.md §1). More flags arrive with later phases.</summary>
-public sealed record TaskFlagsDto(bool Overdue, bool OverAllocated, bool ExtensionPending, bool ReassignmentPending);
+public sealed record TaskFlagsDto(bool Overdue, bool OverAllocated, bool ExtensionPending, bool ReassignmentPending, bool GitLabIssueClosed = false);
+
+/// <summary>The GitLab issue a task was imported from (FR-IMP-05) and changes made there since, waiting for acceptance.</summary>
+public sealed record TaskGitLabDto(string WebUrl, long IssueIid, TaskManagement.Domain.GitLab.GitLabIssueState State, TaskManagement.Domain.GitLab.GitLabPendingChanges? PendingChanges);
 
 /// <summary>Checklist progress shown on the task (FR-CHK-05 needs every mandatory item done before review).</summary>
 public sealed record ChecklistSummaryDto(int Total, int Done, int MandatoryTotal, int MandatoryDone);
@@ -45,7 +48,8 @@ public sealed record TaskDto(
     bool CanViewAlgorithm,
     bool CanViewTime,
     bool CanViewDelays,
-    uint Version);
+    uint Version,
+    TaskGitLabDto? GitLab = null);
 
 public sealed record TaskListItemDto(
     Guid Id,

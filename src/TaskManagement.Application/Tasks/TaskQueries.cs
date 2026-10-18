@@ -166,6 +166,15 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
             .Where(r => r.TaskId == task.Id && r.Status == ApprovalRequestStatus.Pending)
             .Select(r => r.Type)
             .ToListAsync(cancellationToken);
+        var gitLab = await db.GitLabIssueLinks.AsNoTracking().Where(l => l.TaskId == task.Id)
+            .Select(l => new TaskGitLabDto(l.WebUrl, l.IssueIid, l.State, l.PendingChanges))
+            .FirstOrDefaultAsync(cancellationToken);
+        var actions = AllowedActions(visible, hasComments, pending);
+        if (gitLab?.PendingChanges is not null && actions.Contains("update"))
+        {
+            actions = [.. actions, "acceptGitLabChanges"];
+        }
+
         var checklist = await db.TaskChecklistItems.AsNoTracking()
             .Where(i => i.TaskId == task.Id)
             .GroupBy(i => 1)
@@ -200,17 +209,19 @@ public sealed class TaskQueries(IAppDbContext db, TaskAccess access, TimeService
                 task.IsOverdue,
                 task.AllocatedMinutes is { } minutes && spent > minutes * 60L,
                 pending.Contains(ApprovalRequestType.DeadlineExtension),
-                pending.Contains(ApprovalRequestType.Reassignment)),
+                pending.Contains(ApprovalRequestType.Reassignment),
+                task.GitLabIssueClosed),
             checklist,
             task.CancelReason,
             names.GetValueOrDefault(task.CreatedBy) ?? new UserRef(task.CreatedBy, "Unknown"),
             task.CreatedAt,
             task.UpdatedAt,
-            AllowedActions(visible, hasComments, pending),
+            actions,
             visible.Allows(PermissionCatalog.AlgorithmsView),
             visible.Allows(PermissionCatalog.TimeView),
             visible.Allows(PermissionCatalog.DelaysView),
-            task.Version);
+            task.Version,
+            gitLab);
     }
 
     /// <summary>

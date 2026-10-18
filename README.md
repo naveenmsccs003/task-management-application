@@ -2,7 +2,7 @@
 
 A role-based task management application with project and task workflows, algorithm approval, work-session time tracking, checklists, TL review, attachments, deadline and reassignment approvals, GitLab issue import, reports and audit logs.
 
-**Current status: Phases 1–8 approved. Phase 9 — attachments on tasks, comments, algorithms and reviews: private storage, content-signature checks, malware scanning with ClamAV, safe downloads and previews, and Admin-editable type and size limits (awaiting approval). MFA for Admins is a separate follow-up step before production. GitLab import comes in Phase 10.**
+**Current status: Phases 1–9 approved. Phase 10 — GitLab import: Admin-managed connections with encrypted, write-only tokens, linking a project to a GitLab project, importing selected open issues as Draft tasks (never twice), a 15-minute sync and an optional secret-checked webhook, the "GitLab issue closed" flag without changing the task's state, and a run history (awaiting approval). MFA for Admins is a separate follow-up step before production. Dashboards and reports come in Phase 11.**
 
 ## Planned technology
 
@@ -30,7 +30,7 @@ A role-based task management application with project and task workflows, algori
 | [docs/security.md](docs/security.md) | Approved |
 | [docs/testing.md](docs/testing.md) | Approved; results updated each phase |
 | [docs/deployment.md](docs/deployment.md) | Local development documented; updated each phase |
-| docs/gitlab-integration.md | GitLab integration phase |
+| [docs/gitlab-integration.md](docs/gitlab-integration.md) | Phase 10 — awaiting approval |
 
 ## Proposed phases
 
@@ -44,8 +44,8 @@ Each phase ends with builds, tests, a report, and an approval checkpoint.
 6. **Algorithm approval, checklists, work sessions, allocated hours** — approved.
 7. **Notifications (in-app, email, background jobs)** — approved.
 8. **Review, closure, revisions, reassignment, deadline extensions, delay reports** — approved.
-9. **Attachments (private storage)** — current phase.
-10. **GitLab import.**
+9. **Attachments (private storage)** — approved.
+10. **GitLab import** — current phase.
 11. **Dashboards and reports.**
 12. **Hardening** — security review, end-to-end tests, performance checks, deployment documentation.
 

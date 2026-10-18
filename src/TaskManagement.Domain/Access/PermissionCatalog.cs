@@ -48,6 +48,8 @@ public static class PermissionCatalog
     public const string DelaysView = "delays.view";
     public const string AttachmentsUpload = "attachments.upload";
     public const string AttachmentsDelete = "attachments.delete";
+    public const string GitLabConnectionsManage = "gitlab.connections.manage";
+    public const string GitLabImport = "gitlab.import";
     public const string SystemHealth = "system.health";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
@@ -138,8 +140,8 @@ public static class PermissionCatalog
         new("reports.export", "Reports", "Export reports as CSV", G, P, P, null, null),
         new(AuditView, "Audit", "View the audit log", G, null, null, null, null),
         new("audit.view-project", "Audit", "View a project's audit entries", G, P, P, null, null),
-        new("gitlab.connections.manage", "GitLab", "Configure GitLab connections and tokens", G, null, null, null, null),
-        new("gitlab.import", "GitLab", "Link projects and import GitLab issues", null, P, P, null, null),
+        new(GitLabConnectionsManage, "GitLab", "Configure GitLab connections and tokens", G, null, null, null, null),
+        new(GitLabImport, "GitLab", "Link projects and import GitLab issues", null, P, P, null, null),
         new(SystemHealth, "Administration", "View detailed health, job and email status", G, null, null, null, null),
     ];
 

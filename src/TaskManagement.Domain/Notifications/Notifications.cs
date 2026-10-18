@@ -13,9 +13,10 @@ public enum NotificationCategory
     Review,
     Requests,
     Deadlines,
+    GitLab,
 }
 
-/// <summary>The events that produce notifications so far (FR-NOT-03). Later phases add review, request and GitLab events.</summary>
+/// <summary>The events that produce notifications (FR-NOT-03).</summary>
 public enum NotificationType
 {
     TaskAssigned,
@@ -38,6 +39,8 @@ public enum NotificationType
     DelayReported,
     DueSoon,
     Overdue,
+    GitLabIssueClosed,
+    GitLabIssueMissing,
 }
 
 public static class NotificationCatalog
@@ -52,6 +55,7 @@ public static class NotificationCatalog
         NotificationType.ReassignmentRequested or NotificationType.ReassignmentDecided or NotificationType.TaskReassigned
             or NotificationType.ExtensionRequested or NotificationType.ExtensionDecided => NotificationCategory.Requests,
         NotificationType.DelayReported or NotificationType.DueSoon or NotificationType.Overdue => NotificationCategory.Deadlines,
+        NotificationType.GitLabIssueClosed or NotificationType.GitLabIssueMissing => NotificationCategory.GitLab,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown notification type."),
     };
 

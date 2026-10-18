@@ -5,10 +5,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using TaskManagement.Application.Attachments;
 using TaskManagement.Application.Common;
+using TaskManagement.Application.GitLab;
 using TaskManagement.Application.Identity;
 using TaskManagement.Application.Notifications;
 using TaskManagement.Infrastructure.Email;
 using TaskManagement.Infrastructure.Files;
+using TaskManagement.Infrastructure.GitLab;
 using TaskManagement.Infrastructure.Identity;
 using TaskManagement.Infrastructure.Jobs;
 using TaskManagement.Infrastructure.Notifications;
@@ -83,6 +85,7 @@ public static class DependencyInjection
         }
 
         AddAttachments(services, configuration);
+        AddGitLab(services, configuration);
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
@@ -90,6 +93,35 @@ public static class DependencyInjection
             .AddCheck<ClamAvHealthCheck>("malware-scanner", tags: ["ready"]);
 
         return services;
+    }
+
+    /// <summary>GitLab client with the SSRF guard (security.md S19), and the scheduled sync.</summary>
+    private static void AddGitLab(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(GitLabOptions.Section);
+        services.Configure<GitLabOptions>(section);
+        services.AddHttpClient(GitLabHttpClient.ClientName, client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("TaskManagement/1.0");
+            })
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<GitLabOptions>>().Value;
+                return new SocketsHttpHandler
+                {
+                    AllowAutoRedirect = false,
+                    UseCookies = false,
+                    ConnectCallback = (context, cancellationToken) => GitLabHttpClient.ConnectAsync(context, options, cancellationToken),
+                };
+            });
+        services.TryAddSingleton<IGitLabClient, GitLabHttpClient>();
+
+        services.AddSingleton<GitLabSyncWorker>();
+        if (section.GetValue(nameof(GitLabOptions.SyncWorkerEnabled), true))
+        {
+            services.AddHostedService(sp => sp.GetRequiredService<GitLabSyncWorker>());
+        }
     }
 
     /// <summary>Private file storage and malware scanning (docs/deployment.md, Q9).</summary>

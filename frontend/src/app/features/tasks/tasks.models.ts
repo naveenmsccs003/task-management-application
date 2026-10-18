@@ -1,3 +1,4 @@
+import { TaskGitLab } from '../gitlab/gitlab.models';
 export type TaskStatus =
   | 'Draft'
   | 'AwaitingAlgorithm'
@@ -39,7 +40,8 @@ export type TaskActionName =
   | 'reopen'
   | 'requestReassignment'
   | 'requestExtension'
-  | 'reportDelay';
+  | 'reportDelay'
+  | 'acceptGitLabChanges';
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   Draft: 'Draft',
@@ -89,7 +91,7 @@ export interface Task {
   labels: string[];
   currentRevision: number;
   approvedRevision: number | null;
-  flags: { overdue: boolean; overAllocated: boolean; extensionPending: boolean; reassignmentPending: boolean };
+  flags: { overdue: boolean; overAllocated: boolean; extensionPending: boolean; reassignmentPending: boolean; gitLabIssueClosed?: boolean };
   checklist: { total: number; done: number; mandatoryTotal: number; mandatoryDone: number };
   cancelReason: string | null;
   createdBy: UserRef;
@@ -100,6 +102,8 @@ export interface Task {
   canViewTime: boolean;
   canViewDelays: boolean;
   version: number;
+  /** Set when the task was imported from a GitLab issue. */
+  gitLab?: TaskGitLab | null;
 }
 
 export interface TaskListItem {

@@ -4,6 +4,7 @@ using TaskManagement.Domain.Access;
 using TaskManagement.Domain.Audit;
 using TaskManagement.Domain.Checklists;
 using TaskManagement.Domain.Files;
+using TaskManagement.Domain.GitLab;
 using TaskManagement.Domain.Identity;
 using TaskManagement.Domain.Notifications;
 using TaskManagement.Domain.Operations;
@@ -73,6 +74,14 @@ public interface IAppDbContext
     DbSet<DelayReport> DelayReports { get; }
 
     DbSet<Attachment> Attachments { get; }
+
+    DbSet<GitLabConnection> GitLabConnections { get; }
+
+    DbSet<GitLabProjectLink> GitLabProjectLinks { get; }
+
+    DbSet<GitLabIssueLink> GitLabIssueLinks { get; }
+
+    DbSet<ImportRun> ImportRuns { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
