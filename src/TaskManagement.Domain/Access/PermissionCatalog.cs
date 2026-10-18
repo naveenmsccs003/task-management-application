@@ -50,6 +50,9 @@ public static class PermissionCatalog
     public const string AttachmentsDelete = "attachments.delete";
     public const string GitLabConnectionsManage = "gitlab.connections.manage";
     public const string GitLabImport = "gitlab.import";
+    public const string DashboardView = "dashboard.view";
+    public const string ReportsView = "reports.view";
+    public const string ReportsExport = "reports.export";
     public const string SystemHealth = "system.health";
 
     /// <summary>Permissions the Admin role can never lose (FR-ROLE-03).</summary>
@@ -135,9 +138,9 @@ public static class PermissionCatalog
 
         // Notifications, reports, audit, integration, administration
         new(NotificationsView, "Notifications", "View own notifications", O, O, O, O, O),
-        new("dashboard.view", "Reports", "View the role dashboard", G, P, P, O, P),
-        new("reports.view", "Reports", "View reports", G, P, P, O, P),
-        new("reports.export", "Reports", "Export reports as CSV", G, P, P, null, null),
+        new(DashboardView, "Reports", "View the role dashboard", G, P, P, O, P),
+        new(ReportsView, "Reports", "View reports", G, P, P, O, P),
+        new(ReportsExport, "Reports", "Export reports as CSV", G, P, P, null, null),
         new(AuditView, "Audit", "View the audit log", G, null, null, null, null),
         new("audit.view-project", "Audit", "View a project's audit entries", G, P, P, null, null),
         new(GitLabConnectionsManage, "GitLab", "Configure GitLab connections and tokens", G, null, null, null, null),

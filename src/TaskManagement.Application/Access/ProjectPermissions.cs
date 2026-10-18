@@ -151,4 +151,30 @@ public sealed class ProjectAccess(IAppDbContext db, ICurrentUser currentUser, Pe
 }
 
 /// <summary>Where a member holds a permission: everywhere, in whole projects, or only for their own records in projects.</summary>
-public sealed record ScopedProjects(bool Everywhere, IReadOnlyList<Guid> ProjectWide, IReadOnlyList<Guid> OwnOnly);
+public sealed record ScopedProjects(bool Everywhere, IReadOnlyList<Guid> ProjectWide, IReadOnlyList<Guid> OwnOnly)
+{
+    /// <summary>Whether the member holds the permission in <paramref name="projectId"/> at any scope.</summary>
+    public bool Covers(Guid projectId) => Everywhere || ProjectWide.Contains(projectId) || OwnOnly.Contains(projectId);
+
+    /// <summary>
+    /// Where the member holds both permissions: a project is project-wide only when both grants are, and Own when either
+    /// grant is only Own (reports need reports.view and the permission behind their data, FR-RPT-06).
+    /// </summary>
+    public ScopedProjects Intersect(ScopedProjects other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        if (Everywhere)
+        {
+            return other;
+        }
+
+        if (other.Everywhere)
+        {
+            return this;
+        }
+
+        var projectWide = ProjectWide.Intersect(other.ProjectWide).ToList();
+        var own = ProjectWide.Concat(OwnOnly).Intersect(other.ProjectWide.Concat(other.OwnOnly)).Except(projectWide).ToList();
+        return new ScopedProjects(false, projectWide, own);
+    }
+}

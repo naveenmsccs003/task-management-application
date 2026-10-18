@@ -170,7 +170,7 @@ GET `/tasks/{id}/algorithm` lists all submissions (`algorithms.view`).
 | POST | `/tasks/{id}/time-adjustments` | `time.adjust` — `{ userId, minutes, reason }` |
 | GET | `/timesheets?userId=&from=&to=` | `time.view` (own, or project scope) |
 
-**Implemented in Phase 6:** `/me/active-session` (204 when nothing runs; includes `serverTime` so the timer uses the server clock), `/tasks/{id}/time` (totals, overrun, percentage of the allocation, per revision and member, sessions, adjustments) and `/tasks/{id}/time-adjustments` (`minutes` non-zero, at most one week either way; only for someone who worked on or was assigned to the task). Timesheets arrive with reports (Phase 11).
+**Implemented in Phase 6:** `/me/active-session` (204 when nothing runs; includes `serverTime` so the timer uses the server clock), `/tasks/{id}/time` (totals, overrun, percentage of the allocation, per revision and member, sessions, adjustments) and `/tasks/{id}/time-adjustments` (`minutes` non-zero, at most one week either way; only for someone who worked on or was assigned to the task). Timesheets arrived with reports in Phase 11 as `GET /reports/time?groupBy=day` (see §4.12) instead of a separate `/timesheets` endpoint.
 
 ### 4.8 Requests and delays
 
@@ -246,6 +246,25 @@ Downloads of files with scan status other than `Clean` return 409 (`attachment.n
 | GET | `/admin/system-status` | `system.health` — jobs, email queue, integrations (Phase 7: last run of each background job, email queue counts and the 20 most recent permanent failures) |
 | GET | `/health/live` · `/health/ready` | anonymous, minimal body |
 | GET | `/system/info` | anonymous — `{ name, version, serverTimeUtc }` (implemented in Phase 3) |
+
+**Dashboards and reports implemented in Phase 11**, with these details:
+- **`GET /dashboard`** (`dashboard.view`, any scope) returns `{ serverTime, timeZone, myWork, team, projects, admin }`. Sections are chosen by permission, not by role name, and a section the member may not see is `null`:
+  - `myWork` (members with `tasks.work`, FR-RPT-01): open tasks by status, the active session, hours this week (Monday to now in the member's time zone, adjustments included), and the first 10 of each list — due in the next 3 days, overdue, waiting for feedback (algorithm submitted or in review), revision requested — with totals.
+  - `team` (project-wide `algorithms.approve` or `tasks.review`, FR-RPT-02): algorithm approvals and reviews waiting (not the member's own tasks), open tasks over their allocated hours, overdue tasks, pending reassignment/extension requests by others, and the workload per assignee (open, in progress, hours this week on those projects).
+  - `projects` (project-wide or Global `dashboard.view`, FR-RPT-03): up to 12 active or on-hold projects by key, each with tasks by status, allocated vs spent hours, overdue now, an 8-week overdue trend, extensions approved and revisions requested; `total` counts all of them.
+  - `admin` (`system.health`, FR-RPT-04): active, invited, inactive and locked-out members, failed sign-ins in 24 hours and 7 days (from the audit log), GitLab connection status, background job status and the email queue.
+- **`GET /reports`** lists the reports the member may run: `{ name, title, description, usesDateRange, groupBy[], canExport }`.
+- **`GET /reports/{name}?from=&to=&projectId=&userId=&groupBy=`** returns a table: `{ report, title, from, to, timeZone, columns: [{ key, label, kind }], rows: [[cell, …]], truncated, generatedAt }`. `kind` is `Text`, `Number`, `Duration` (seconds), `Date`, `DateTime` (UTC instant) or `Task` (`{ id, key }`). `from`/`to` are dates in the viewer's time zone, both inclusive (default: the last 30 days, at most 366; 400 otherwise). At most 5,000 rows (`truncated: true` beyond).
+  | Report | Rows | Needs besides `reports.view` + `tasks.view` | `userId` filters |
+  |---|---|---|---|
+  | `time` | Time in the period by `groupBy` = `task` (default), `member`, `project`, `revision` or `day` (timesheet). Sessions are clipped to the period (an active one counts to now) and split at the viewer's local midnight; adjustments count on the day they were made. | `time.view` | session/adjustment owner |
+  | `allocated-vs-actual` | Tasks with allocated hours open at some time in the period: allocated, spent, overrun, % used. | `time.view` | assignee |
+  | `overdue` | Tasks overdue now (no period). | — | assignee |
+  | `extensions` | Extension requests made in the period and their outcome. | — | requester |
+  | `revisions` | Tasks with revision requests decided in the period, with the count. | — | submitter |
+  | `delays` | Delay reports filed in the period. | `delays.view` | reporter |
+- **Scope (FR-RPT-06):** the report's permissions are intersected per project: a project is fully included only where all of them are Project/Global; where any is Own, only tasks the member is or was assigned to. A `projectId` outside that scope answers 404; no report available answers 403.
+- **CSV (FR-RPT-07):** `?format=csv` additionally needs `reports.export` (403 otherwise) and returns the same table as `text/csv; charset=utf-8` with a UTF-8 BOM, as an attachment named like `time-2026-09-19-to-2026-10-18.csv`. Durations are decimal hours, instants are local `yyyy-MM-dd HH:mm`, text cells starting with `= + - @`, tab or CR get a leading `'` (S20). Each export writes a `report.exported` audit entry with the filters and row count. Any other `format` answers 400.
 
 ## 5. Main DTO shapes
 

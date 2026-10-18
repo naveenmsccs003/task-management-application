@@ -125,6 +125,7 @@ api.MapNotificationEndpoints();
 api.MapReviewEndpoints();
 api.MapAttachmentEndpoints();
 api.MapGitLabEndpoints();
+api.MapReportingEndpoints();
 app.MapGitLabWebhook();
 app.MapHub<NotificationHub>(NotificationHub.Path);
 

@@ -133,6 +133,8 @@ Separation-of-duties for approvals (assumption A6):
 | `dashboard.view` | Role-appropriate dashboard | G | P | P | O | P |
 | `reports.view` | View reports | G | P | P | O | P |
 | `reports.export` | Export CSV | G | P | P | — | — |
+
+*Reports and dashboards (Phase 11):* a report also needs the permission behind its data — `tasks.view`, plus `time.view` for the time and allocated-vs-actual reports and `delays.view` for delay reports — and only covers the projects (and, for Own scope, the tasks) where the member holds all of them. With the seed grants a Viewer therefore gets the overdue, extension and revision reports only, and a Developer sees only tasks they are or were assigned to. The dashboard's project overview needs `dashboard.view` with Project or Global scope; with Own scope (Developer) it shows only the member's own work.
 | `audit.view` | View audit log | G | — | — | — | — |
 | `audit.view-project` | View audit entries of a project | G | P | P | — | — |
 | `gitlab.connections.manage` | Configure GitLab connections/tokens | G | — | — | — | — |

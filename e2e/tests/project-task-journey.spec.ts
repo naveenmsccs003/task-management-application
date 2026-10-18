@@ -1,4 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { adminApi, signIn, signOut } from '../support/accounts';
 
 const password = 'e2e-team-harbor-willow-63';
@@ -19,7 +20,7 @@ async function addMember(page: Page, email: string, name: string, role: string):
 /**
  * Journey 2 (project, task, assignment, algorithm rejected then approved, comment and task files), journey 3 (work sessions, checklist, review
  * with a revision, approval and closure), journey 4 (deadline extension approved) and journey 5 (another developer gets
- * "not found" by URL).
+ * "not found" by URL) and journey 7 (the PM's dashboard and reports, with a CSV export).
  */
 test('task lifecycle: setup, algorithm, work, review with revision, extension, closure; others cannot open it', async ({ page }) => {
   test.setTimeout(600_000); // four accounts and many sign-ins
@@ -166,7 +167,8 @@ test('task lifecycle: setup, algorithm, work, review with revision, extension, c
   await signIn(page, tl.email, password);
   await page.goto(taskUrl);
   await page.getByLabel('Review comment (required to request changes)', { exact: true }).fill('Show an error message for invalid emails.');
-  await page.getByRole('checkbox', { name: 'Form validates email' }).last().check();
+  // The reopen list appears once the review form has loaded the checklist; scope to it so the step waits for it.
+  await page.getByRole('form', { name: 'Review the work' }).getByRole('checkbox', { name: 'Form validates email' }).check();
   await page.getByRole('button', { name: 'Request changes' }).click();
   await expect(page.getByTestId('task-status')).toHaveText('Revision requested');
   await signOut(page);
@@ -209,4 +211,24 @@ test('task lifecycle: setup, algorithm, work, review with revision, extension, c
   await page.goto(taskUrl);
   await expect(page.getByRole('alert')).toContainText('not found');
   await expect(page.getByRole('heading', { name: /Build the sign-up form/ })).toHaveCount(0);
+  await signOut(page);
+
+  // Journey 7: the PM's dashboard shows the project's progress; reports show the work and export it as CSV.
+  await signIn(page, pm.email, password);
+  const card = page.getByTestId(`project-${key}`);
+  await expect(card).toContainText('Closed 1');
+  await expect(card.getByText('Extensions approved').locator('xpath=following-sibling::dd[1]')).toHaveText('1');
+  await expect(card.getByText('Revisions requested').locator('xpath=following-sibling::dd[1]')).toHaveText('1');
+  await page.getByRole('link', { name: 'Reports' }).click();
+  await page.getByRole('button', { name: 'Show report' }).click();
+  await expect(page.getByRole('table', { name: 'Time spent' }).getByRole('link', { name: `${key}-1` })).toBeVisible();
+  await choose(page, 'Report', 'Revisions');
+  await page.getByRole('button', { name: 'Show report' }).click();
+  const revisions = page.getByRole('table', { name: 'Revisions' });
+  await expect(revisions.getByRole('row').filter({ hasText: `${key}-1` })).toContainText('Closed');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Export CSV' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^revisions-\d{4}-\d{2}-\d{2}-to-\d{4}-\d{2}-\d{2}\.csv$/);
+  const csv = readFileSync(await download.path(), 'utf8');
+  expect(csv).toContain('Project,Task,Title,Assignee,Revisions requested,Current revision,Status,Last requested');
+  expect(csv).toContain(`${key}-1,Build the sign-up form,Dana Developer,1,1,Closed,`);
 });

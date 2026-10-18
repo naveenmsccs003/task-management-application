@@ -7,7 +7,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     title: 'Task Management',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+    loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.DashboardPage),
   },
   {
     path: 'sign-in',
@@ -92,6 +92,12 @@ export const routes: Routes = [
     title: 'Approvals · Task Management',
     canActivate: [authGuard],
     loadComponent: () => import('./features/requests/request-queue').then((m) => m.RequestQueue),
+  },
+  {
+    path: 'reports',
+    title: 'Reports · Task Management',
+    canActivate: [permissionGuard('reports.view', 'Own')],
+    loadComponent: () => import('./features/reports/reports').then((m) => m.Reports),
   },
   {
     path: 'notifications',

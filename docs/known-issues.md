@@ -1,10 +1,10 @@
 # Known Issues, Risks and Open Decisions
 
-Last updated: 2026-10-18 (Phase 10)
+Last updated: 2026-10-18 (Phase 11)
 
 ## Open decisions
 
-None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phases 4–9 (authentication and administration; projects, tasks, comments; algorithms, checklists, work sessions, time; notifications; review, requests, delays, overdue; attachments) approved 2026-10-17. Phase 10 is awaiting approval.
+None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recommended defaults (Q1: GitHub + GitHub Actions). Phase 2 design, Phase 3 foundation, Phases 4–9 (authentication and administration; projects, tasks, comments; algorithms, checklists, work sessions, time; notifications; review, requests, delays, overdue; attachments) approved 2026-10-17; Phase 10 (GitLab import) and Phase 11 (dashboards and reports) approved 2026-10-18.
 
 ## Environment notes (development machine)
 
@@ -41,7 +41,7 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L20 | ~~No notifications for algorithm events, allocated-hour thresholds or auto-closed sessions.~~ **Resolved in Phase 7.** | — |
 | L21 | ~~Review, the mandatory-checklist check (AC-CHK-1), reopening checklist items (FR-CHK-06) and algorithm re-approval (FR-ALG-06) were not available.~~ **Resolved in Phase 8.** | — |
 | L22 | ~~Algorithm submissions took text only.~~ **Resolved in Phase 9:** files can be attached to algorithms, reviews, comments and tasks (FR-ALG-02, FR-ATT-01). | — |
-| L23 | Timesheets and time reports by member, project and date range (FR-TIME-10) are not available; the task page shows per-task time only. | Phase 11. |
+| L23 | ~~Timesheets and time reports by member, project and date range (FR-TIME-10) were not available.~~ **Resolved in Phase 11:** the Time report groups by task, member, project, revision or day (timesheet), in the viewer's time zone. | — |
 | L24 | `Idempotency-Key` is honoured on the four work actions; create endpoints do not use it yet (repeated creates are prevented by the UI disabling buttons while saving). | Hardening (Phase 12). |
 | L25 | The background jobs run on every app instance. If two instances close the same session at once, the second save hits the task's concurrency check, is recorded as a failed run on the System status page, and the next run finds nothing to do — no double close or double notification. | A database lock could make them single-runner if this becomes noisy. |
 | L26 | ~~Due-soon and overdue notifications (FR-NOT-03) were not sent.~~ **Resolved in Phase 8:** one due-soon notice per due date (today or tomorrow) to the assignee, and one overdue notice per day to the assignee and Team Leaders. | — |
@@ -61,6 +61,10 @@ None. Q1–Q14 and WQ1–WQ4 were resolved on 2026-10-17 by accepting the recomm
 | L40 | Imported GitLab descriptions are stored and shown as plain text, like all descriptions (see L13); GitLab Markdown and images are not rendered. | With L13. |
 | L41 | The GitLab sync job runs on every app instance (like the other jobs, L25). Two instances syncing the same project at once can both record a run; task changes are protected by the task's concurrency check. | Same as L25. |
 | L42 | GitLab tokens are encrypted with the Data Protection key ring. If the key ring is lost or replaced, saved tokens can no longer be read and must be entered again on Admin → GitLab. | Documented in gitlab-integration.md §2. |
+| L43 | The dashboard's 8-week overdue trend is rebuilt from each task's *current* due date, close and cancel times; there is no history of the Overdue flag. A task whose deadline was later extended therefore does not count as overdue in the weeks before the extension, and day boundaries use the viewer's time zone rather than the assignee's. | Store a daily overdue snapshot if exact history is needed. |
+| L44 | Reports return at most 5,000 rows (the page says so and suggests a narrower filter) and cover at most 366 days; the time report refuses periods with more than 100,000 work sessions. The dashboard shows at most 12 projects (with a link to the full list). Reports are computed on request, not cached. | Revisit with real data volumes (performance checks in Phase 12). |
+| L45 | In the time report, time adjustments count on the day they were entered, not on the day of the work they correct, and a session is split at the *viewer's* midnight, so two viewers in different time zones can see different daily totals (the period totals agree). | By design (FR-TIME-10: viewer's time zone). |
+| L46 | The Reports page filters by period, project and grouping; the API's `userId` filter (one member) is not in the page yet — "group by member" shows everyone's totals instead. | Add if requested. |
 | L18 | Fixed in Phase 5: the e2e mail helper decoded every email as quoted-printable, which corrupted links whose token started with two hex characters (`?token=9B…`), and two e2e steps could type into a list page's search box before the form page appeared. Both caused occasional false failures. | Resolved. |
 
 ## Risks

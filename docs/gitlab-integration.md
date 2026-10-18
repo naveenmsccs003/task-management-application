@@ -1,6 +1,6 @@
 # GitLab Integration
 
-Status: **Phase 10 — awaiting approval** (2026-10-18)
+Status: **Approved (Phase 10, 2026-10-18)**
 
 GitLab is an **integration source only**: the application reads projects and issues through the GitLab REST API v4 and never writes to GitLab (A14). Requirements: FR-IMP-01..09, AC-IMP-1..2, task-workflow.md §8, security.md S13/S18/S19. Endpoints: api-design.md §4.11.
 

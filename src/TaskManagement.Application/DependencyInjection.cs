@@ -12,6 +12,7 @@ using TaskManagement.Application.Identity;
 using TaskManagement.Application.Members;
 using TaskManagement.Application.Notifications;
 using TaskManagement.Application.Projects;
+using TaskManagement.Application.Reporting;
 using TaskManagement.Application.Requests;
 using TaskManagement.Application.Review;
 using TaskManagement.Application.Settings;
@@ -88,6 +89,10 @@ public static class DependencyInjection
         // GitLab
         services.AddScoped<GitLabConnections>();
         services.AddScoped<GitLabImports>();
+
+        // Dashboards and reports
+        services.AddScoped<DashboardService>();
+        services.AddScoped<ReportService>();
 
         return services;
     }
